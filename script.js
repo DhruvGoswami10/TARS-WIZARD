@@ -346,32 +346,38 @@ if(typeof firebase !== 'undefined') {
     const containerSelector = isPreview ? '.preview-posts' : '.category-posts';
     const categoryPosts = document.querySelector(`[data-category="${category}"] ${containerSelector}`);
     
+    // Remove any existing listeners
+    postsRef.off();
+    
     postsRef.on("value", async (snapshot) => {
-      categoryPosts.innerHTML = "";
-      
-      if (!snapshot.exists()) {
-        return; // Remove the "no posts yet!" message
-      }
+        // Clear existing posts
+        categoryPosts.innerHTML = "";
+        
+        if (!snapshot.exists()) {
+            return;
+        }
 
-      const posts = [];
-      snapshot.forEach((thread) => {
-        posts.unshift({ key: thread.key, ...thread.val() }); // Add newest first
-      });
+        const posts = [];
+        snapshot.forEach((thread) => {
+            posts.unshift({ key: thread.key, ...thread.val() });
+        });
 
-      const postsToShow = isPreview ? posts.slice(0, 2) : posts; // Show only 2 posts for preview
-      const promises = postsToShow.map(post => 
-        db.ref("users/" + post.userId).once("value")
-          .then(userSnapshot => {
-            const userData = userSnapshot.val();
-            const userEmail = userData?.email || "deleted user";
-            const postDiv = createPostElement(post, category, userEmail);
-            categoryPosts.appendChild(postDiv);
-          })
-      );
-      
-      await Promise.all(promises);
+        const postsToShow = isPreview ? posts.slice(0, 2) : posts;
+        
+        // Use Promise.all to handle all posts at once
+        await Promise.all(postsToShow.map(async post => {
+            try {
+                const userSnapshot = await db.ref("users/" + post.userId).once("value");
+                const userData = userSnapshot.val();
+                const userEmail = userData?.email || "deleted user";
+                const postDiv = createPostElement(post, category, userEmail);
+                categoryPosts.appendChild(postDiv);
+            } catch (error) {
+                console.error("Error loading post:", error);
+            }
+        }));
     });
-  }
+}
 
   // Add function to load all category previews
   function loadAllCategoryPreviews() {
@@ -500,61 +506,63 @@ if(typeof firebase !== 'undefined') {
       });
     }
   
-    upvoteBtn.addEventListener('click', (e) => {
+    upvoteBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
       e.stopPropagation();
+      
       if (!auth.currentUser) {
-        alert('Please login to upvote');
-        return;
+          alert('Please login to upvote');
+          return;
       }
   
-      const upvoteRef = db.ref(`${basePath}/upvotes/${auth.currentUser.uid}`);
-      const countRef = db.ref(`${basePath}/upvoteCount`);
-      
-      upvoteRef.once('value', (snapshot) => {
-        if (snapshot.exists()) {
-          // Remove upvote
-          upvoteRef.remove();
-          countRef.transaction(count => (count || 1) - 1);
-          upvoteBtn.classList.remove('active');
-        } else {
-          // Add upvote
-          upvoteRef.set(true);
-          countRef.transaction(count => (count || 0) + 1);
-          upvoteBtn.classList.add('active');
-  
-          // Get the content owner's info and send notification
-          db.ref(basePath).once('value', (itemSnapshot) => {
-            const itemData = itemSnapshot.val();
-            // For replies, we need to check the user property
-            const ownerId = isReply ? 
-              // First try to find the userId, fallback to finding user by email
-              (itemData.userId || new Promise((resolve) => {
-                db.ref('users').orderByChild('email').equalTo(itemData.user).once('value', snapshot => {
-                  snapshot.forEach(userSnap => resolve(userSnap.key));
-                });
-              })) :
-              itemData.userId;
-  
-            // Handle both direct userId and Promise cases
-            Promise.resolve(ownerId).then(finalOwnerId => {
-              if (finalOwnerId && finalOwnerId !== auth.currentUser.uid) {
-                const notifRef = db.ref(`users/${finalOwnerId}/notifications`).push();
-                notifRef.set({
-                  message: `${auth.currentUser.email} upvoted your ${itemType}`,
-                  timestamp: firebase.database.ServerValue.TIMESTAMP,
-                  read: false,
-                  type: 'upvote',
-                  itemId: itemId,
-                  category: category
-                });
+      try {
+          const upvoteRef = db.ref(`${basePath}/upvotes/${auth.currentUser.uid}`);
+          const countRef = db.ref(`${basePath}/upvoteCount`);
+          
+          const snapshot = await upvoteRef.once('value');
+          const hasUpvoted = snapshot.exists();
+          
+          await db.ref(basePath).transaction(current => {
+              if (!current) return current;
+              
+              if (hasUpvoted) {
+                  // Remove upvote
+                  if (current.upvotes) {
+                      delete current.upvotes[auth.currentUser.uid];
+                  }
+                  current.upvoteCount = (current.upvoteCount || 1) - 1;
+              } else {
+                  // Add upvote
+                  if (!current.upvotes) current.upvotes = {};
+                  current.upvotes[auth.currentUser.uid] = true;
+                  current.upvoteCount = (current.upvoteCount || 0) + 1;
               }
-            });
+              return current;
           });
-        }
-      });
-    });
   
-    return upvoteBtn;
+          // Update button state without reloading
+          upvoteBtn.classList.toggle('active');
+          const countSpan = upvoteBtn.querySelector('.upvote-count');
+          const currentCount = parseInt(countSpan.textContent);
+          countSpan.textContent = hasUpvoted ? currentCount - 1 : currentCount + 1;
+  
+          // Handle notification if adding upvote
+          if (!hasUpvoted) {
+              const itemData = (await db.ref(basePath).once('value')).val();
+              const ownerId = isReply ? 
+                  await getUserIdByEmail(itemData.user) : 
+                  itemData.userId;
+  
+              if (ownerId && ownerId !== auth.currentUser.uid) {
+                  addNotification(ownerId, `${auth.currentUser.email} upvoted your ${itemType}`);
+              }
+          }
+      } catch (error) {
+          console.error("Error updating upvote:", error);
+      }
+  });
+  
+  return upvoteBtn;
   }
   
   // Modify the post creation in loadCategoryPosts function
