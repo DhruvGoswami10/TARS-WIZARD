@@ -157,6 +157,8 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
   auth.onAuthStateChanged((user) => {
     const userEmailElement = document.getElementById("user-email");
     const notificationBell = document.getElementById("notification-bell");
+    const createPostBtn = document.getElementById("create-post-btn");
+    
     if (user) {
       logoutBtn.style.display = "inline-block";
       loginBtn.style.display = "none";
@@ -165,6 +167,7 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
       userEmailElement.textContent = user.email;
       notificationBell.style.display = "flex";
       loadNotifications();
+      createPostBtn.style.display = "block";
     } else {
       logoutBtn.style.display = "none";
       loginBtn.style.display = "inline-block";
@@ -172,7 +175,10 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
       userEmailElement.style.display = "none";
       userEmailElement.textContent = "";
       notificationBell.style.display = "none";
+      createPostBtn.style.display = "none";
     }
+    
+    loadAllCategoryPreviews();
   });
 
   function loadPosts(loggedInUserId) {
@@ -370,6 +376,11 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     const containerSelector = isPreview ? '.preview-posts' : '.category-posts';
     const categoryPosts = document.querySelector(`[data-category="${category}"] ${containerSelector}`);
     
+    if (!categoryPosts) {
+      console.error(`Container not found for category: ${category}`);
+      return;
+    }
+  
     // Remove any existing listeners
     postsRef.off();
     
@@ -378,6 +389,7 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
         categoryPosts.innerHTML = "";
         
         if (!snapshot.exists()) {
+            categoryPosts.innerHTML = "<p>No posts yet in this category!</p>";
             return;
         }
 
@@ -594,7 +606,10 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     const postDiv = document.createElement("div");
     postDiv.classList.add("post");
     
-    const deleteButton = auth.currentUser && auth.currentUser.uid === post.userId 
+    const isAuthenticated = auth.currentUser;
+    const isAuthor = isAuthenticated && auth.currentUser.uid === post.userId;
+    
+    const deleteButton = isAuthor 
       ? `<button class="delete-btn">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 69 14" class="svgIcon bin-top">
             <g clip-path="url(#clip0_35_24)">
@@ -607,10 +622,13 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
         </button>` 
       : '';
     
+    const upvoteButton = createUpvoteButton(post.key, category, 'post', post.upvoteCount || 0, null);
+    
     postDiv.innerHTML = `
       <div class="post-content">${post.content}</div>
       <div class="post-footer">
         <div class="post-actions">
+          ${isAuthenticated ? upvoteButton.outerHTML : ''}
           <span class="post-author">Posted by ${userEmail}</span>
         </div>
         <div class="post-actions">
@@ -619,18 +637,30 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
       </div>
     `;
   
-    const upvoteBtn = createUpvoteButton(post.key, category, 'post', post.upvoteCount || 0, null);
-    postDiv.querySelector('.post-actions').prepend(upvoteBtn);
-  
-    // Add your existing event listeners
-    if (deleteButton) {
-      postDiv.querySelector(".delete-btn").addEventListener("click", (event) => {
-        event.stopPropagation();
-        deletePost(category, post.key);
-      });
+    if (isAuthenticated) {
+      if (deleteButton) {
+        postDiv.querySelector(".delete-btn").addEventListener("click", (event) => {
+          event.stopPropagation();
+          deletePost(category, post.key);
+        });
+      }
+      
+      const upvoteBtn = postDiv.querySelector('.upvote-btn');
+      if (upvoteBtn) {
+        upvoteBtn.addEventListener('click', (e) => handleUpvote(e, post, category));
+      }
     }
     
-    postDiv.addEventListener("click", () => openPost(category, post.key, post, userEmail));
+    postDiv.addEventListener("click", () => {
+      if (!isAuthenticated) {
+        const loginPrompt = document.getElementById('login-prompt');
+        loginPrompt.style.display = "block";
+        setTimeout(() => loginPrompt.style.display = "none", 3000);
+      } else {
+        openPost(category, post.key, post, userEmail);
+      }
+    });
+    
     return postDiv;
   }
   
@@ -765,8 +795,69 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     }
 );
 
+// Initialize categories if they don't exist
+function initializeCategories() {
+  const categories = ['updates', 'issues', 'discussions', 'suggestions'];
+  categories.forEach(category => {
+    db.ref(`categories/${category}`).once('value', snapshot => {
+      if (!snapshot.exists()) {
+        db.ref(`categories/${category}`).set({
+          threads: {}
+        });
+      }
+    });
+  });
+}
+
+// Add this to the Firebase initialization block
+if(typeof firebase !== 'undefined') {
+  // ...existing initialization code...
+
+  // Initialize categories when the app starts
+  initializeCategories();
+
+  // Load all category previews when page loads
+  document.addEventListener('DOMContentLoaded', () => {
+    const categories = ['updates', 'issues', 'discussions', 'suggestions'];
+    categories.forEach(category => loadCategoryPosts(category, true));
+  });
+
+  // ...rest of existing code...
+}
+
 // ...existing code...
 
 } else {
     console.error("Firebase is not loaded");
 }
+
+// Add styles for the login prompt
+document.head.insertAdjacentHTML('beforeend', `
+  <style>
+    .login-prompt {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 5px;
+      z-index: 1000;
+    }
+    
+    .inline-login-btn {
+      background: none;
+      border: none;
+      color: #007bff;
+      text-decoration: underline;
+      cursor: pointer;
+      padding: 0;
+      font: inherit;
+    }
+    
+    .inline-login-btn:hover {
+      color: #0056b3;
+    }
+  </style>
+`);
