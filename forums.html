@@ -186,6 +186,12 @@
       <div id="reply-editor"></div>
       <button id="reply-btn">Reply</button>
     </section>
+
+    <!-- Remove the auth-message section if it exists -->
+    <!-- Add login prompt for actions that require auth -->
+    <div id="login-prompt" class="login-prompt" style="display: none;">
+        <p>Please <button class="inline-login-btn">login</button> to interact with posts</p>
+    </div>
   </main>
 
   <script src="script.js"></script>
@@ -241,6 +247,26 @@
     // Add click handlers for Google sign-in
     loginGoogleBtn.addEventListener('click', handleGoogleSignIn);
     signupGoogleBtn.addEventListener('click', handleGoogleSignIn);
+  </script>
+
+  <script>
+    // Add this after the Google Sign In Handler code
+    document.addEventListener('DOMContentLoaded', () => {
+      // Debug logging
+      console.log('DOM loaded, checking categories...');
+      
+      const categories = document.querySelectorAll('.category');
+      categories.forEach(category => {
+        console.log('Found category:', category.dataset.category);
+      });
+
+      // Ensure Firebase is initialized
+      if (typeof firebase !== 'undefined' && firebase.apps.length) {
+        console.log('Firebase is initialized');
+      } else {
+        console.error('Firebase is not initialized');
+      }
+    });
   </script>
 </body>
 </html>
