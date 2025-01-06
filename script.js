@@ -622,13 +622,13 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
         </button>` 
       : '';
     
-    const upvoteButton = createUpvoteButton(post.key, category, 'post', post.upvoteCount || 0, null);
+    const upvoteBtn = createUpvoteButton(post.key, category, 'post', post.upvoteCount || 0, null);
     
     postDiv.innerHTML = `
       <div class="post-content">${post.content}</div>
       <div class="post-footer">
         <div class="post-actions">
-          ${isAuthenticated ? upvoteButton.outerHTML : ''}
+          ${isAuthenticated ? upvoteBtn.outerHTML : ''}
           <span class="post-author">Posted by ${userEmail}</span>
         </div>
         <div class="post-actions">
@@ -637,28 +637,64 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
       </div>
     `;
   
+    // Handle delete button click
+    if (deleteButton) {
+      const deleteBtn = postDiv.querySelector(".delete-btn");
+      deleteBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        deletePost(category, post.key);
+      });
+    }
+    
+    // Handle upvote button click
     if (isAuthenticated) {
-      if (deleteButton) {
-        postDiv.querySelector(".delete-btn").addEventListener("click", (event) => {
-          event.stopPropagation();
-          deletePost(category, post.key);
+      const upvoteButton = postDiv.querySelector('.upvote-btn');
+      if (upvoteButton) {
+        upvoteButton.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          try {
+            const upvoteRef = db.ref(`categories/${category}/threads/${post.key}/upvotes/${auth.currentUser.uid}`);
+            const snapshot = await upvoteRef.once('value');
+            const hasUpvoted = snapshot.exists();
+            
+            await db.ref(`categories/${category}/threads/${post.key}`).transaction(current => {
+              if (!current) return current;
+              
+              if (hasUpvoted) {
+                if (current.upvotes) {
+                  delete current.upvotes[auth.currentUser.uid];
+                }
+                current.upvoteCount = (current.upvoteCount || 1) - 1;
+              } else {
+                if (!current.upvotes) current.upvotes = {};
+                current.upvotes[auth.currentUser.uid] = true;
+                current.upvoteCount = (current.upvoteCount || 0) + 1;
+              }
+              return current;
+            });
+            
+            // Update button state
+            upvoteButton.classList.toggle('active');
+            const countSpan = upvoteButton.querySelector('.upvote-count');
+            const currentCount = parseInt(countSpan.textContent);
+            countSpan.textContent = hasUpvoted ? currentCount - 1 : currentCount + 1;
+            
+            // Handle notification
+            if (!hasUpvoted && post.userId !== auth.currentUser.uid) {
+              addNotification(post.userId, `${auth.currentUser.email} upvoted your post`);
+            }
+          } catch (error) {
+            console.error("Error updating upvote:", error);
+          }
         });
-      }
-      
-      const upvoteBtn = postDiv.querySelector('.upvote-btn');
-      if (upvoteBtn) {
-        upvoteBtn.addEventListener('click', (e) => handleUpvote(e, post, category));
       }
     }
     
+    // Add post click handler
     postDiv.addEventListener("click", () => {
-      if (!isAuthenticated) {
-        const loginPrompt = document.getElementById('login-prompt');
-        loginPrompt.style.display = "block";
-        setTimeout(() => loginPrompt.style.display = "none", 3000);
-      } else {
-        openPost(category, post.key, post, userEmail);
-      }
+      openPost(category, post.key, post, userEmail);
     });
     
     return postDiv;
