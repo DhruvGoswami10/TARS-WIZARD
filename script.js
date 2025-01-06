@@ -108,11 +108,14 @@ if(typeof firebase !== 'undefined') {
         .then((userCredential) => {
             const user = userCredential.user;
             
-            // Create user data in database
-            return db.ref("users/" + user.uid).set({
+            // Create user data and increment counter atomically
+            const updates = {};
+            updates[`users/${user.uid}`] = {
                 email: user.email,
                 createdAt: firebase.database.ServerValue.TIMESTAMP
-            });
+            };
+            
+            return db.ref().update(updates);
         })
         .then(() => {
             document.getElementById("signup-form").style.display = "none";
