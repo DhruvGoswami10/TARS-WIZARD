@@ -108,7 +108,7 @@ if(typeof firebase !== 'undefined') {
         .then((userCredential) => {
             const user = userCredential.user;
             
-            // Create user data without incrementing counter
+            // Create user data
             return db.ref(`users/${user.uid}`).set({
                 email: user.email,
                 createdAt: firebase.database.ServerValue.TIMESTAMP
