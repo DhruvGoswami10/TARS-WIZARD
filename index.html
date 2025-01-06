@@ -398,6 +398,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-functions-compat.js"></script>
     <script type="module">
         // Initialize Firebase
         const firebaseConfig = {
@@ -411,15 +412,44 @@
         };
 
         const app = firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
         const db = firebase.database();
-
-        // Function to safely increment a value in Firebase
-        function incrementCounter(path) {
-            const counterRef = db.ref(path);
-            return counterRef.transaction(currentValue => (currentValue || 0) + 1);
+        
+        // Initialize user count
+        function initializeUserCount() {
+            const userCountRef = db.ref('metrics/registeredUsers');
+            userCountRef.once('value').then((snapshot) => {
+                if (!snapshot.exists()) {
+                    // If counter doesn't exist, initialize it by counting users
+                    db.ref('users').once('value', (usersSnapshot) => {
+                        const count = usersSnapshot.numChildren();
+                        userCountRef.set(count);
+                    });
+                }
+            });
         }
 
-        // Get session ID from localStorage or create new one
+        // Listen for auth state changes
+        auth.onAuthStateChanged((user) => {
+            if (user && user.metadata.creationTime === user.metadata.lastSignInTime) {
+                // New user signed up - increment counter
+                const counterRef = db.ref('metrics/registeredUsers');
+                counterRef.transaction(currentValue => (currentValue || 0) + 1);
+            }
+        });
+
+        // Initialize counter when page loads
+        initializeUserCount();
+
+        // Update counter display when value changes
+        db.ref('metrics/registeredUsers').on('value', (snapshot) => {
+            const userCount = document.getElementById('user-count');
+            if (userCount) {
+                userCount.textContent = (snapshot.val() || 0).toLocaleString();
+            }
+        });
+
+        // Rest of your existing session and page view code
         let sessionId = localStorage.getItem('sessionId');
         if (!sessionId) {
             sessionId = Math.random().toString(36).substring(2, 15);
