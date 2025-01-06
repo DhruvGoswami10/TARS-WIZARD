@@ -414,49 +414,76 @@
         const app = firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
-
-        // Simplified user count function
+        
+        // Function to update user count without directly reading users node
         function updateUserCount() {
-            db.ref('users').once('value')
-                .then(snapshot => {
-                    const count = snapshot.numChildren();
-                    db.ref('metrics/registeredUsers').set(count)
-                        .then(() => {
-                            const userCount = document.getElementById('user-count');
-                            if (userCount) {
-                                userCount.textContent = count.toLocaleString();
-                            }
-                        });
+            db.ref('metrics/registeredUsers').once('value')
+                .then((snapshot) => {
+                    const userCount = document.getElementById('user-count');
+                    if (userCount) {
+                        userCount.textContent = (snapshot.val() || 0).toLocaleString();
+                    }
                 })
-                .catch(error => console.error("Error updating user count:", error));
+                .catch((error) => {
+
+                    console.error("Error getting user count:", error);
+                });
         }
 
-        // Listen for changes in users node
-        db.ref('users').on('value', () => {
-            updateUserCount();
+        // Listen for auth state changes
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // Update the counter display
+                updateUserCount();
+            }
         });
 
-        // Call once when page loads
-        updateUserCount();
+        // Listen for changes in metrics
+        db.ref('metrics/registeredUsers').on('value', (snapshot) => {
+            const userCount = document.getElementById('user-count');
+            if (userCount) {
+                userCount.textContent = (snapshot.val() || 0).toLocaleString();
+            }
+        });
 
-        // Rest of your existing session and page view code
+        // Initialize page views counter if it doesn't exist
+        function initializePageViews() {
+            const pageViewsRef = db.ref('metrics/pageViews');
+            pageViewsRef.once('value', (snapshot) => {
+                if (!snapshot.exists()) {
+                    pageViewsRef.set(0);
+                }
+            });
+        }
+
+        // Function to increment page views
+        function incrementPageViews() {
+            const pageViewsRef = db.ref('metrics/pageViews');
+            pageViewsRef.transaction((currentViews) => {
+                return (currentViews || 0) + 1;
+            });
+        }
+
+        // Initialize counters when page loads
+        updateUserCount();
+        initializePageViews();
+
+        // Listen for new sessions for page views
         let sessionId = localStorage.getItem('sessionId');
         if (!sessionId) {
             sessionId = Math.random().toString(36).substring(2, 15);
             localStorage.setItem('sessionId', sessionId);
             
-            // Increment page views only for new sessions
-            incrementCounter('metrics/pageViews').then(() => {
-                // After successful increment, save session
-                db.ref(`sessions/${sessionId}`).set({
-                    timestamp: firebase.database.ServerValue.TIMESTAMP
-                }).catch(error => {
-                    console.log('Session storage failed, but page view was counted');
-                });
+            // Increment page views for new sessions only
+            incrementPageViews();
+            
+            // Store session
+            db.ref(`sessions/${sessionId}`).set({
+                timestamp: firebase.database.ServerValue.TIMESTAMP
             });
         }
 
-        // Listen for user count and page view updates
+        // Listen for changes in metrics
         db.ref('metrics').on('value', (snapshot) => {
             const data = snapshot.val() || { pageViews: 0, registeredUsers: 0 };
             
@@ -471,7 +498,7 @@
             }
         });
 
-        // Cleanup old sessions every hour (optional, can be removed if causing issues)
+        // Remove old sessions every hour
         setInterval(() => {
             const yesterday = Date.now() - (24 * 60 * 60 * 1000);
             db.ref('sessions').orderByChild('timestamp').endAt(yesterday)
@@ -484,9 +511,8 @@
                     if (Object.keys(updates).length > 0) {
                         db.ref('sessions').update(updates);
                     }
-                })
-                .catch(error => console.log('Session cleanup failed, will try next time'));
-        }, 60 * 60 * 1000);  // Run every hour
+                });
+        }, 60 * 60 * 1000);
     </script>
 </body>
 </html>
