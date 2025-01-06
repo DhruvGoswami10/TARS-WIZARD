@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TARS AI - Inspired by Interstellar</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Hero Section Styles */
+        .hero {
+            height: 100vh;
+            background: #000;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stars {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: url('images/stars.png') repeat; /* Changed from stars.png to stars.jpg */
+            animation: moveStars 50s linear infinite;
+            opacity: 0.6; /* Added opacity for better visibility */
+            background-size: cover; /* Added to ensure proper image coverage */
+        }
+
+        @keyframes moveStars {
+            from { background-position: 0 0; }
+            to { background-position: 10000px 0; }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #fff;
+            text-align: center;
+            width: 100%;
+            padding: 0;
+        }
+
+        .hero-title {
+            font-size: 4.5em; /* Slightly reduced from 5em */
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 10px;
+            animation: glowText 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glowText {
+            from { text-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px #e6b800; }
+            to { text-shadow: 0 0 20px #fff, 0 0 30px #ffd34d, 0 0 40px #ffd34d; }
+        }
+
+        .hero-subtitle {
+            font-size: 1.5em;
+            margin: 20px 0;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 1s ease forwards 1s;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .cta-button {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            background: transparent;
+            border: 2px solid #fff;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: 0.5s;
+        }
+
+        .cta-button:hover::before {
+            left: 100%;
+        }
+
+        /* Remove these styles */
+        .floating-tars {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: url('tars.png') no-repeat center/contain;
+            animation: float 6s ease-in-out infinite;
+            right: 10%;
+            bottom: 10%;
+            filter: drop-shadow(0 0 20px rgba(255,255,255,0.2));
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-30px) rotate(2deg); }
+        }
+
+        .floating-tars::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%);
+            background-size: 200% 200%;
+            animation: shine 4s linear infinite;
+        }
+
+        @keyframes shine {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Enhance parallax effect */
+        .stars, .floating-tars, .black-hole {
+            will-change: transform; /* Optimize animations */
+            transform-style: preserve-3d;
+            backface-visibility: hidden;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 100px 0;
+            background: linear-gradient(to bottom, #000, #1a1a1a);
+            color: #fff;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .feature-card {
+            background: rgba(255,255,255,0.05);
+            padding: 30px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            transform: translateY(50px);
+            opacity: 0;
+            animation: fadeInCard 0.5s ease forwards;
+        }
+
+        @keyframes fadeInCard {
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .feature-card:nth-child(2) { animation-delay: 0.2s; }
+        .feature-card:nth-child(3) { animation-delay: 0.4s; }
+
+        .feature-icon {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        /* Quote Section */
+        .quote-section {
+            padding: 20px 0;
+            background: #000;
+            color: #fff;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quote {
+            font-size: 2em;
+            line-height: 1.5;
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInQuote 1s ease forwards 0.5s;
+        }
+
+        @keyframes fadeInQuote {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .quote::before {
+            content: '"';
+            font-size: 4em;
+            position: absolute;
+            left: -40px;
+            top: -40px;
+            opacity: 0.2;
+        }
+
+        /* Black Hole Animation */
+        /*.black-hole {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle at center, #000 40%, transparent 70%);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 100px 50px rgba(0,0,0,0.8);
+            animation: rotate 20s linear infinite;
+            z-index: 1;
+        } */
+
+        @keyframes rotate {
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Add new styles for the 3D model */
+        .model-container {
+            position: relative;
+            width: 100%;
+            height: 65vh;
+            margin-bottom: 0;
+            transform: none;
+            top: 0;
+            right: 0;
+        }
+
+        spline-viewer {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Media query for mobile responsiveness */
+        @media (max-width: 768px) {
+            .hero-content {
+                height: auto;
+                min-height: 100vh;
+                padding: 2rem 0;
+            }
+
+            .model-container {
+                height: 40vh;
+                margin-bottom: 1rem;
+            }
+
+            .hero-title {
+                font-size: 3em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="main-nav">
+        <ul class="nav-links">
+            <li><a href="index.html" class="active">Home</a></li>
+            <li><a href="downloads.html">Downloads</a></li>
+            <li><a href="forums.html">Forums</a></li>
+        </ul>
+    </nav>
+
+    <section class="hero">
+        <div class="stars"></div>
+        <div class="black-hole"></div>
+        <div class="hero-content">
+            <div class="model-container">
+                <script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.54/build/spline-viewer.js"></script>
+                <spline-viewer url="https://prod.spline.design/zp9qJpW-z9RVErOU/scene.splinecode"></spline-viewer>
+            </div>
+            <h1 class="hero-title">TARS WIZARD</h1>
+            <p class="hero-subtitle">A Next Generation Robotic Assistant</p>
+            <a href="downloads.html" class="cta-button">Download Now</a>
+        </div>
+    </section>
+
+    <section class="features">
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🤖</div>
+                <h3>Advanced AI</h3>
+                <p>Powered by cutting-edge artificial intelligence, just like the TARS from Interstellar.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3>90% Honesty</h3>
+                <p>Configurable honesty settings, because sometimes 90% honesty is better than 100%.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🚀</div>
+                <h3>Space-Grade</h3>
+                <p>Built with the same reliability standards as spacecraft systems.</p>
+            </div>
+        </div>
+    </section>
+    
+    <section class="quote-section">
+        <div class="quote">
+            "TARS, what's your honesty parameter set to?"<br>
+            "90 percent."<br>
+            "90 percent?"<br>
+            "Absolute honesty isn't always the most diplomatic nor the safest form of communication with emotional beings."
+        </div>
+        
+        <br><br>
+
+        <div class="social-card">
+            <a href="#" class="socialContainer containerOne">
+                <svg class="socialSvg instagramSvg" viewBox="0 0 16 16">
+                    <path d="M8 0C5.829 0 5.556.01 4.703.048 3.85.088 3.269.222 2.76.42a3.917 3.917 0 0 0-1.417.923A3.927 3.927 0 0 0 .42 2.76C.222 3.268.087 3.85.048 4.7.01 5.555 0 5.827 0 8.001c0 2.172.01 2.444.048 3.297.04.852.174 1.433.372 1.942.205.526.478.972.923 1.417.444.445.89.719 1.416.923.51.198 1.09.333 1.942.372C5.555 15.99 5.827 16 8 16s2.444-.01 3.298-.048c.851-.04 1.434-.174 1.943-.372a3.916 3.916 0 0 0 1.416-.923c.445-.445.718-.891.923-1.417.197-.509.332-1.09.372-1.942C15.99 10.445 16 10.173 16 8s-.01-2.445-.048-3.299c-.04-.851-.175-1.433-.372-1.941a3.926 3.926 0 0 0-.923-1.417A3.911 3.911 0 0 0 13.24.42c-.51-.198-1.092-.333-1.943-.372C10.443.01 10.172 0 7.998 0h.003zm-.717 1.442h.718c2.136 0 2.389.007 3.232.046.78.035 1.204.166 1.486.275.373.145.64.319.92.599.28.28.453.546.598.92.11.281.24.705.275 1.485.039.843.047 1.096.047 3.231s-.008 2.389-.047 3.232c-.035.78-.166 1.203-.275 1.485a2.47 2.47 0 0 1-.599.919c-.28.28-.546.453-.92.598-.28.11-.704.24-1.485.276-.843.038-1.096.047-3.232.047s-2.39-.009-3.233-.047c-.78-.036-1.203-.166-1.485-.276a2.478 2.478 0 0 1-.92-.598 2.48 2.48 0 0 1-.6-.92c-.109-.281-.24-.705-.275-1.485-.038-.843-.046-1.096-.046-3.233 0-2.136.008-2.388.046-3.231.036-.78.166-1.204.276-1.486.145-.373.319-.64.599-.92.28-.28.546-.453.92-.598.282-.11.705-.24 1.485-.276.738-.034 1.024-.044 2.515-.045v.002zm4.988 1.328a.96.96 0 1 0 0 1.92.96.96 0 0 0 0-1.92zm-4.27 1.122a4.109 4.109 0 1 0 0 8.217 4.109 4.109 0 0 0 0-8.217zm0 1.441a2.667 2.667 0 1 1 0 5.334 2.667 2.667 0 0 1 0-5.334z"></path>
+                </svg>
+            </a>
+            <a href="#" class="socialContainer containerTwo">
+                <svg class="socialSvg twitterSvg" viewBox="0 0 16 16">
+                    <path d="M5.026 15c6.038 0 9.341-5.003 9.341-9.334 0-.14 0-.282-.006-.422A6.685 6.685 0 0 0 16 3.542a6.658 6.658 0 0 1-1.889.518 3.301 3.301 0 0 0 1.447-1.817 6.533 6.533 0 0 1-2.087.793A3.286 3.286 0 0 0 7.875 6.03a9.325 9.325 0 0 1-6.767-3.429 3.289 3.289 0 0 0 1.018 4.382A3.323 3.323 0 0 1 .64 6.575v.045a3.288 3.288 0 0 0 2.632 3.218 3.203 3.203 0 0 1-.865.115 3.23 3.23 0 0 1-.614-.057 3.283 3.283 0 0 0 3.067 2.277A6.588 6.588 0 0 1 .78 13.58a6.32 6.32 0 0 1-.78-.045A9.344 9.344 0 0 0 5.026 15z"></path>
+                </svg>
+            </a>
+            <a href="#" class="socialContainer containerThree">
+                <svg class="socialSvg linkdinSvg" viewBox="0 0 448 512">
+                    <path d="M100.28 448H7.4V148.9h92.88zM53.79 108.1C24.09 108.1 0 83.5 0 53.8a53.79 53.79 0 0 1 107.58 0c0 29.7-24.1 54.3-53.79 54.3zM447.9 448h-92.68V302.4c0-34.7-.7-79.2-48.29-79.2-48.29 0-55.69 37.7-55.69 76.7V448h-92.78V148.9h89.08v40.8h1.3c12.4-23.5 42.69-48.3 87.88-48.3 94 0 111.28 61.9 111.28 142.3V448z"></path>
+                </svg>
+            </a>
+            <a href="#" class="socialContainer containerFour">
+                <svg class="socialSvg githubSvg" viewBox="0 0 24 24">
+                    <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+                </svg>
+            </a>
+        </div>
+
+        <footer class="site-footer">
+            <div class="footer-stats">
+                <div class="stat-item">
+                    <span class="stat-number" id="user-count">0</span>
+                    <span class="stat-label">Registered Users</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="page-views">0</span>
+                    <span class="stat-label">Total Page Views</span>
+                </div>
+            </div>
+            
+            <div class="footer-links">
+                <button onclick="window.location.href='terms.html'" class="terms-btn">Terms & Conditions</button>
+            </div>
+            
+            <div class="copyright">
+                © 2024 Copyright: <a href="https://dhruvgoswami.com" class="copyright-link">dhruvgoswami.com</a>
+            </div>
+        </footer>
+    </section>
+
+    <script>
+        // Parallax effect for stars
+        document.addEventListener('mousemove', (e) => {
+            const stars = document.querySelector('.stars');
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+            
+            stars.style.transform = `translate(${x * 50}px, ${y * 50}px)`;
+        });
+
+        // Feature cards animation on scroll
+        const cards = document.querySelectorAll('.feature-card');
+        
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.animation = 'fadeInCard 0.5s ease forwards';
+                }
+            });
+        }, { threshold: 0.1 });
+
+        cards.forEach(card => observer.observe(card));
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script type="module">
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBOEOxU866-jIoT0KIO-hBG3GbUaTEnsQg",
+            authDomain: "fir-forums-54bdb.firebaseapp.com",
+            projectId: "fir-forums-54bdb",
+            storageBucket: "fir-forums-54bdb.firebasestorage.app",
+            messagingSenderId: "159128608485",
+            appId: "1:159128608485:web:b68c2b41f4ba97c28d3e0c",
+            measurementId: "G-J50YZC2H2L"
+        };
+
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Function to safely increment a value in Firebase
+        function incrementCounter(path) {
+            const counterRef = db.ref(path);
+            return counterRef.transaction(currentValue => (currentValue || 0) + 1);
+        }
+
+        // Get session ID from localStorage or create new one
+        let sessionId = localStorage.getItem('sessionId');
+        if (!sessionId) {
+            sessionId = Math.random().toString(36).substring(2, 15);
+            localStorage.setItem('sessionId', sessionId);
+            
+            // Increment page views only for new sessions
+            incrementCounter('metrics/pageViews').then(() => {
+                // After successful increment, save session
+                db.ref(`sessions/${sessionId}`).set({
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                }).catch(error => {
+                    console.log('Session storage failed, but page view was counted');
+                });
+            });
+        }
+
+        // Listen for user count and page view updates
+        db.ref('metrics').on('value', (snapshot) => {
+            const data = snapshot.val() || { pageViews: 0, registeredUsers: 0 };
+            
+            const userCount = document.getElementById('user-count');
+            if (userCount) {
+                userCount.textContent = (data.registeredUsers || 0).toLocaleString();
+            }
+            
+            const pageViews = document.getElementById('page-views');
+            if (pageViews) {
+                pageViews.textContent = (data.pageViews || 0).toLocaleString();
+            }
+        });
+
+        // Cleanup old sessions every hour (optional, can be removed if causing issues)
+        setInterval(() => {
+            const yesterday = Date.now() - (24 * 60 * 60 * 1000);
+            db.ref('sessions').orderByChild('timestamp').endAt(yesterday)
+                .once('value')
+                .then(snapshot => {
+                    const updates = {};
+                    snapshot.forEach(child => {
+                        updates[child.key] = null;
+                    });
+                    if (Object.keys(updates).length > 0) {
+                        db.ref('sessions').update(updates);
+                    }
+                })
+                .catch(error => console.log('Session cleanup failed, will try next time'));
+        }, 60 * 60 * 1000);  // Run every hour
+    </script>
+</body>
+</html>

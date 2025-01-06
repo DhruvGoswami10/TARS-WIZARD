@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Downloads - TARS AI</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+</head>
+<body>
+    <nav class="main-nav">
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="downloads.html" class="active">Downloads</a></li>
+            <li><a href="forums.html">Forums</a></li>
+        </ul>
+    </nav>
+    
+    <header class="page-header">
+        <div class="header-content">
+            <h1>Downloads</h1>
+            <div class="header-controls">
+              <div class="auth-buttons">
+                <button id="signup-btn">Sign Up</button>
+                <button id="login-btn">Login</button>
+                <span id="user-email" class="user-email"></span>
+                <button id="logout-btn" style="display:none;">Logout</button>
+              </div>
+            </div>
+          </div>
+    </header>
+
+    <main id="content" style="display: none;">
+        <div class="cards-container">
+            <div class="card-container">
+                <div class="card">
+                    <img src="images/walk.gif">
+                    <div class="card-description">
+                        <p class="text-title">Walking Mechanism</p>
+                        <p class="text-body">Description for download 1. Click to learn more about this download option.</p>
+                    </div>
+                </div>
+                <button type="button" class="button" onclick="downloadFile('downloads/mechanism.py')">
+                    <span class="button__text">Download</span>
+                    <span class="button__icon">
+                        <svg class="svg" data-name="Layer 2" id="bdd05811-e15d-428c-bb53-8661459f9307" viewBox="0 0 35 35" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
+                            <path d="M17.5,22.693a3.189,3.189,0,0,1-2.262-.936L8.487,15.006a1.249,1.249,0,0,1,1.767-1.767l6.751,6.751a.7.7,0,0,0,.99,0l6.751-6.751a1.25,1.25,0,0,1,1.768,1.767l-6.752,6.751A3.191,3.191,0,0,1,17.5,22.693Z"></path>
+                            <path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z"></path>
+                        </svg>
+                    </span>
+                </button>
+            </div>
+
+            <div class="card-container">
+                <div class="card">
+                    <img src="images/speak.gif">
+                    <div class="card-description">
+                        <p class="text-title">TARS Voice</p>
+                        <p class="text-body">Description for download 2. Click to learn more about this download option.</p>
+                    </div>
+                </div>
+                <button type="button" class="button" onclick="downloadFile('downloads/voice.py')">
+                    <span class="button__text">Download</span>
+                    <span class="button__icon">
+                        <svg class="svg" data-name="Layer 2" id="bdd05811-e15d-428c-bb53-8661459f9307" viewBox="0 0 35 35" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
+                            <path d="M17.5,22.693a3.189,3.189,0,0,1-2.262-.936L8.487,15.006a1.249,1.249,0,0,1,1.767-1.767l6.751,6.751a.7.7,0,0,0,.99,0l6.751-6.751a1.25,1.25,0,0,1,1.768,1.767l-6.752,6.751A3.191,3.191,0,0,1,17.5,22.693Z"></path>
+                            <path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z"></path>
+                        </svg>
+                    </span>
+                </button>
+            </div>
+
+            <div class="card-container">
+                <div class="card">
+                    <img src="images/voicewalk.gif">
+                    <div class="card-description">
+                        <p class="text-title">Walking with voice</p>
+                        <p class="text-body">Description for download 3. Click to learn more about this download option.</p>
+                    </div>
+                </div>
+                <button type="button" class="button" onclick="downloadFile('downloads/voice_walk.py')">
+                    <span class="button__text">Download</span>
+                    <span class="button__icon">
+                        <svg class="svg" data-name="Layer 2" id="bdd05811-e15d-428c-bb53-8661459f9307" viewBox="0 0 35 35" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
+                            <path d="M17.5,22.693a3.189,3.189,0,0,1-2.262-.936L8.487,15.006a1.249,1.249,0,0,1,1.767-1.767l6.751,6.751a.7.7,0,0,0,.99,0l6.751-6.751a1.25,1.25,0,0,1,1.768,1.767l-6.752,6.751A3.191,3.191,0,0,1,17.5,22.693Z"></path>
+                            <path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z"></path>
+                        </svg>
+                    </span>
+                </button>
+            </div>
+
+            <div class="card-container">
+                <div class="card">
+                    <img src="images/enq.gif">
+                    <div class="card-description">
+                        <p class="text-title">Enquries...</p>
+                        <p class="text-body">Description for download 4. Click to learn more about this download option.</p>
+                    </div>
+                </div>
+                <button type="button" class="button" onclick="downloadFile('downloads/enquiries.py')">
+                    <span class="button__text">Download</span>
+                    <span class="button__icon">
+                        <svg class="svg" data-name="Layer 2" id="bdd05811-e15d-428c-bb53-8661459f9307" viewBox="0 0 35 35" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
+                            <path d="M17.5,22.693a3.189,3.189,0,0,1-2.262-.936L8.487,15.006a1.249,1.249,0,0,1,1.767-1.767l6.751,6.751a.7.7,0,0,0,.99,0l6.751-6.751a1.25,1.25,0,0,1,1.768,1.767l-6.752,6.751A3.191,3.191,0,0,1,17.5,22.693Z"></path>
+                            <path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z"></path>
+                        </svg>
+                    </span>
+                </button>
+            </div>
+        </div>
+
+        <div class="download-section">
+            <div class="info-cards-grid">
+                <div class="info-card info-red" onclick="downloadFile('downloads/prerequisites.py')">
+                    <p class="info-tip">Assembly Guide</p>
+                    <p class="info-text">Required to assemble your sarcastic robot</p>
+                </div>
+                <div class="info-card info-blue" onclick="downloadFile('downloads/documentation.py')">
+                    <p class="info-tip">3D Files</p>
+                    <p class="info-text">Absolutely necessary, you will have to print yourself</p>
+                </div>
+                <div class="info-card info-green" onclick="downloadFile('downloads/setup.py')">
+                    <p class="info-tip">Code Guide</p>
+                    <p class="info-text">Required to get your API keys</p>
+                </div>
+            </div>
+            <div class="instructions">
+                <h2>Installation Instructions</h2>
+                <div class="instruction-step">
+                    <h3>Step 1: Prerequisites</h3>
+                    <p>Download and install all required components from the Prerequisites card.</p>
+                </div>
+                <div class="instruction-step">
+                    <h3>Step 2: Main Files</h3>
+                    <p>Download the main program files from the cards above.</p>
+                </div>
+                <div class="instruction-step">
+                    <h3>Step 3: Documentation</h3>
+                    <p>Get the documentation for detailed setup and usage instructions.</p>
+                </div>
+                <div class="instruction-step">
+                    <h3>Step 4: Setup</h3>
+                    <p>Run the setup files and follow the installation guide.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="components-section">
+            <h2 class="components-title">Components used in this project</h2>
+            <div class="components-list">
+                <div class="component-item">
+                    <img src="components/servo.jpg" alt="Servo Motor" class="component-image">
+                    <div class="component-details">
+                        <h3>Raspberry Pi 5</h3>
+                        <p>Brains of TARS.</p>
+                    </div>
+                    <span class="component-quantity">x 1</span>
+                    <a href="https://shop.com/servo" class="cart-button">
+                        <i class="cart-icon">🛒</i>
+                        Add to Cart
+                    </a>
+                </div>
+
+                <div class="component-item">
+                    <img src="components/arduino.jpg" alt="Arduino" class="component-image">
+                    <div class="component-details">
+                        <h3>Metal gear Servo LD-3015MG</h3>
+                        <p>Highly recommend this specific one.</p>
+                    </div>
+                    <span class="component-quantity">x 3</span>
+                    <a href="https://shop.com/arduino" class="cart-button">
+                        <i class="cart-icon">🛒</i>
+                        Add to Cart
+                    </a>
+                </div>
+
+                <div class="component-item">
+                    <img src="components/power.jpg" alt="Power Supply" class="component-image">
+                    <div class="component-details">
+                        <h3>12v to 5v DC-DC converter</h3>
+                        <p>Stable power source for servo motors</p>
+                    </div>
+                    <span class="component-quantity">x 1</span>
+                    <a href="https://shop.com/power" class="cart-button">
+                        <i class="cart-icon">🛒</i>
+                        Add to Cart
+                    </a>
+                </div>
+
+                <div class="component-item">
+                    <img src="components/bracket.jpg" alt="Servo Bracket" class="component-image">
+                    <div class="component-details">
+                        <h3>5 inch LCD Display/h3>
+                        <p>To watch videos, WHAT DO YOU THINK WHY ELSE?!</p>
+                    </div>
+                    <span class="component-quantity">x 1</span>
+                    <a href="https://shop.com/brackets" class="cart-button">
+                        <i class="cart-icon">🛒</i>
+                        Add to Cart
+                    </a>
+                </div>
+
+                <div class="component-item">
+                    <img src="components/usb.jpg" alt="USB Cable" class="component-image">
+                    <div class="component-details">
+                        <h3>Mini Microphone</h3>
+                        <p>USB 2.0 mini mic for TARS to listen to your burning questions</p>
+                    </div>
+                    <span class="component-quantity">x 1</span>
+                    <a href="https://shop.com/usb" class="cart-button">
+                        <i class="cart-icon">🛒</i>
+                        Add to Cart
+                    </a>
+                </div>
+
+                <div class="component-item">
+                    <img src="components/jumper.jpg" alt="Jumper Wires" class="component-image">
+                    <div class="component-details">
+                        <h3>XT60 Connector cables</h3>
+                        <p>Comes in 2pcs: 1 male and 1 female (used for DC converter)</p>
+                    </div>
+                    <span class="component-quantity">x 1</span>
+                    <a href="https://shop.com/jumper" class="cart-button">
+                        <i class="cart-icon">🛒</i>
+                        Add to Cart
+                    </a>
+                </div>
+
+                <div class="component-item">
+                    <img src="components/breadboard.jpg" alt="Breadboard" class="component-image">
+                    <div class="component-details">
+                        <h3>Micro HDMI to HDMI Cable</h3>
+                        <p>To connect raspberry pi with display</p>
+                    </div>
+                    <span class="component-quantity">x 1</span>
+                    <a href="https://shop.com/breadboard" class="cart-button">
+                        <i class="cart-icon">🛒</i>
+                        Add to Cart
+                    </a>
+                </div>
+
+                <div class="component-item">
+                    <img src="components/mic.jpg" alt="Microphone Module" class="component-image">
+                    <div class="component-details">
+                        <h3>LiPo Battery 1300 mAh</h3>
+                        <p>For Servos it should be: 11.1V 76C (I have calculated)</p>
+                    </div>
+                    <span class="component-quantity">x 1</span>
+                    <a href="https://shop.com/mic" class="cart-button">
+                        <i class="cart-icon">🛒</i>
+                        Add to Cart
+                    </a>
+                </div>
+
+                <div class="component-item">
+                    <img src="components/speaker.jpg" alt="Speaker Module" class="component-image">
+                    <div class="component-details">
+                        <h3>Cellaris PowerBack</h3>
+                        <p>Take it apart and use it</p>
+                    </div>
+                    <span class="component-quantity">x 1</span>
+                    <a href="https://shop.com/speaker" class="cart-button">
+                        <i class="cart-icon">🛒</i>
+                        Add to Cart
+                    </a>
+                </div>
+
+                <div class="component-item">
+                    <img src="components/speaker.jpg" alt="Speaker Module" class="component-image">
+                    <div class="component-details">
+                        <h3>LiPo Battery Charger</h3>
+                        <p>Make sure it has ____ pins</p>
+                    </div>
+                    <span class="component-quantity">x 1</span>
+                    <a href="https://shop.com/speaker" class="cart-button">
+                        <i class="cart-icon">🛒</i>
+                        Add to Cart
+                    </a>
+                </div>
+
+                <div class="component-item">
+                    <img src="components/speaker.jpg" alt="Speaker Module" class="component-image">
+                    <div class="component-details">
+                        <h3>8 Bit Do Controller</h3>
+                        <p>To control TARS</p>
+                    </div>
+                    <span class="component-quantity">x 1</span>
+                    <a href="https://shop.com/speaker" class="cart-button">
+                        <i class="cart-icon">🛒</i>
+                        Add to Cart
+                    </a>
+                </div>
+
+                <div class="component-item">
+                    <img src="components/speaker.jpg" alt="Speaker Module" class="component-image">
+                    <div class="component-details">
+                        <h3>Handy mini Keyboard and touchpad</h3>
+                        <p>To run code on your machine.</p>
+                    </div>
+                    <span class="component-quantity">x 1</span>
+                    <a href="https://shop.com/speaker" class="cart-button">
+                        <i class="cart-icon">🛒</i>
+                        Add to Cart
+                    </a>
+                </div>
+
+                <div class="component-item">
+                    <img src="components/frame.jpg" alt="Robot Frame" class="component-image">
+                    <div class="component-details">
+                        <h3>Metal Rods</h3>
+                        <p>Length = ______ and Diameter = ______</p>
+                    </div>
+                    <span class="component-quantity">x 3</span>
+                    <a href="https://shop.com/frame" class="cart-button">
+                        <i class="cart-icon">🛒</i>
+                        Add to Cart
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="auth-message" class="auth-message">
+        <h2>Please Login or Sign Up</h2>
+        <p>You need to be logged in to access downloads</p>
+    </div>
+
+    <!-- Replace the old login form with this -->
+    <div id="login-form" class="container auth-modal">
+      <div class="form-container">
+        <button class="close-btn" onclick="document.getElementById('login-form').style.display='none'"></button>
+        <p class="title">Welcome back</p>
+        <form class="form">
+          <input type="email" class="input" placeholder="Email" id="login-email">
+          <input type="password" class="input" placeholder="Password" id="login-password">
+          <p class="page-link">
+            <span class="page-link-label">Forgot Password?</span>
+          </p>
+          <button class="form-btn" id="login-submit" type="button">Log in</button>
+        </form>
+        <p class="sign-up-label">
+          Don't have an account?<span class="sign-up-link">Sign up</span>
+        </p>
+        <div class="buttons-container">
+          <div class="apple-login-button">
+            <svg stroke="currentColor" fill="currentColor" stroke-width="0" class="apple-icon" viewBox="0 0 1024 1024" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+              <path d="M747.4 535.7c-.4-68.2 30.5-119.6 92.9-157.5-34.9-50-87.7-77.5-157.3-82.8-65.9-5.2-138 38.4-164.4 38.4-27.9 0-91.7-36.6-141.9-36.6C273.1 298.8 163 379.8 163 544.6c0 48.7 8.9 99 26.7 150.8 23.8 68.2 109.6 235.3 199.1 232.6 46.8-1.1 79.9-33.2 140.8-33.2 59.1 0 89.7 33.2 141.9 33.2 90.3-1.3 167.9-153.2 190.5-221.6-121.1-57.1-114.6-167.2-114.6-170.7zm-105.1-305c50.7-60.2 46.1-115 44.6-134.7-44.8 2.6-96.6 30.5-126.1 64.8-32.5 36.8-51.6 82.3-47.5 133.6 48.4 3.7 92.6-21.2 129-63.7z"></path>
+            </svg>
+            <span>Log in with Apple</span>
+          </div>
+          <div class="google-login-button">
+            <svg stroke="currentColor" fill="currentColor" stroke-width="0" version="1.1" x="0px" y="0px" class="google-icon" viewBox="0 0 48 48" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+              <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12 c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24 c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path>
+              <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657 C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path>
+              <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36 c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path>
+              <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571 c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path>
+            </svg>
+            <span>Log in with Google</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Fix the signup form Apple button -->
+    <div id="signup-form" class="container auth-modal">
+      <div class="form-container">
+        <button class="close-btn" onclick="document.getElementById('signup-form').style.display='none'"></button>
+        <p class="title">Create account</p>
+        <form class="form">
+          <input type="text" class="input" placeholder="Name" id="signup-name">
+          <input type="email" class="input" placeholder="Email" id="signup-email">
+          <input type="password" class="input" placeholder="Password" id="signup-password">
+          <button class="form-btn" id="signup-submit" type="button">Create account</button>
+        </form>
+        <p class="sign-up-label">
+          Already have an account?<span class="sign-up-link">Log in</span>
+        </p>
+        <div class="buttons-container">
+          <div class="apple-login-button">
+            <svg stroke="currentColor" fill="currentColor" stroke-width="0" class="apple-icon" viewBox="0 0 1024 1024" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+              <path d="M747.4 535.7c-.4-68.2 30.5-119.6 92.9-157.5-34.9-50-87.7-77.5-157.3-82.8-65.9-5.2-138 38.4-164.4 38.4-27.9 0-91.7-36.6-141.9-36.6C273.1 298.8 163 379.8 163 544.6c0 48.7 8.9 99 26.7 150.8 23.8 68.2 109.6 235.3 199.1 232.6 46.8-1.1 79.9-33.2 140.8-33.2 59.1 0 89.7 33.2 141.9 33.2 90.3-1.3 167.9-153.2 190.5-221.6-121.1-57.1-114.6-167.2-114.6-170.7zm-105.1-305c50.7-60.2 46.1-115 44.6-134.7-44.8 2.6-96.6 30.5-126.1 64.8-32.5 36.8-51.6 82.3-47.5 133.6 48.4 3.7 92.6-21.2 129-63.7z"></path>
+            </svg>
+            <span>Sign up with Apple</span>
+          </div>
+          <div class="google-login-button">
+            <svg stroke="currentColor" fill="currentColor" stroke-width="0" version="1.1" x="0px" y="0px" class="google-icon" viewBox="0 0 48 48" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+              <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12 c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24 c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path>
+              <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657 C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path>
+              <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36 c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path>
+              <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571 c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path>
+            </svg>
+            <span>Sign up with Google</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add the form switching and Google Sign In script before the closing body tag -->
+    <script>
+      // Get the form elements
+      const loginForm = document.getElementById('login-form');
+      const signupForm = document.getElementById('signup-form');
+
+      // Get the switch links
+      const toSignupLink = loginForm.querySelector('.sign-up-link');
+      const toLoginLink = signupForm.querySelector('.sign-up-link');
+
+      // Get Google login buttons
+      const loginGoogleBtn = loginForm.querySelector('.google-login-button');
+      const signupGoogleBtn = signupForm.querySelector('.google-login-button');
+
+      // Add click handlers for switching forms
+      toSignupLink.addEventListener('click', () => {
+        loginForm.style.display = 'none';
+        signupForm.style.display = 'flex';
+      });
+
+      toLoginLink.addEventListener('click', () => {
+        signupForm.style.display = 'none';
+        loginForm.style.display = 'flex';
+      });
+
+      // Google Sign In Handler
+      function handleGoogleSignIn() {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        firebase.auth().signInWithPopup(provider)
+          .then((result) => {
+            // Save user data to database
+            const user = result.user;
+            firebase.database().ref('users/' + user.uid).set({
+              email: user.email,
+              name: user.displayName,
+              profilePic: user.photoURL
+            });
+            
+            // Close the forms
+            loginForm.style.display = 'none';
+            signupForm.style.display = 'none';
+          })
+          .catch((error) => {
+            console.error("Error during Google sign in:", error);
+            alert(error.message);
+          });
+      }
+
+      // Add click handlers for Google sign-in
+      loginGoogleBtn.addEventListener('click', handleGoogleSignIn);
+      signupGoogleBtn.addEventListener('click', handleGoogleSignIn);
+    </script>
+
+    <script>
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBOEOxU866-jIoT0KIO-hBG3GbUaTEnsQg",
+            authDomain: "fir-forums-54bdb.firebaseapp.com",
+            projectId: "fir-forums-54bdb",
+            storageBucket: "fir-forums-54bdb.firebasestorage.app",
+            messagingSenderId: "159128608485",
+            appId: "1:159128608485:web:b68c2b41f4ba97c28d3e0c",
+            measurementId: "G-J50YZC2H2L"
+        };
+
+        if(typeof firebase !== 'undefined') {
+            const app = firebase.initializeApp(firebaseConfig);
+            const auth = firebase.auth();
+
+            auth.onAuthStateChanged((user) => {
+                const content = document.getElementById('content');
+                const authMessage = document.getElementById('auth-message');
+                const userEmailElement = document.getElementById("user-email");
+                const loginBtn = document.getElementById("login-btn");
+                const signupBtn = document.getElementById("signup-btn");
+                const logoutBtn = document.getElementById("logout-btn");
+
+                if (user) {
+                    content.style.display = 'block';
+                    authMessage.style.display = 'none';
+                    userEmailElement.style.display = "inline-block";
+                    userEmailElement.textContent = user.email;
+                    loginBtn.style.display = "none";
+                    signupBtn.style.display = "none";
+                    logoutBtn.style.display = "inline-block";
+                } else {
+                    content.style.display = 'none';
+                    authMessage.style.display = 'block';
+                    userEmailElement.style.display = "none";
+                    loginBtn.style.display = "inline-block";
+                    signupBtn.style.display = "inline-block";
+                    logoutBtn.style.display = "none";
+                }
+            });
+
+            function downloadFile(filePath) {
+                if (!auth.currentUser) {
+                    alert('Please login to download files');
+                    return;
+                }
+                const link = document.createElement('a');
+                link.href = filePath;
+                link.download = filePath.split('/').pop();
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            // Login button click handler
+            document.getElementById("login-btn").addEventListener("click", () => {
+                document.getElementById("login-form").style.display = "flex";
+            });
+
+            // Login form submit handler
+            document.getElementById("login-submit").addEventListener("click", () => {
+                const email = document.getElementById("login-email").value;
+                const password = document.getElementById("login-password").value;
+                
+                auth.signInWithEmailAndPassword(email, password)
+                    .then(() => {
+                        document.getElementById("login-form").style.display = "none";
+                    })
+                    .catch((error) => alert(error.message));
+            });
+
+            // Signup button click handler
+            document.getElementById("signup-btn").addEventListener("click", () => {
+                document.getElementById("signup-form").style.display = "flex";
+            });
+
+            // Signup form submit handler
+            document.getElementById("signup-submit").addEventListener("click", () => {
+                const email = document.getElementById("signup-email").value;
+                const password = document.getElementById("signup-password").value;
+                
+                auth.createUserWithEmailAndPassword(email, password)
+                    .then(() => {
+                        document.getElementById("signup-form").style.display = "none";
+                    })
+                    .catch((error) => alert(error.message));
+            });
+
+            // Logout button click handler
+            document.getElementById("logout-btn").addEventListener("click", () => {
+                auth.signOut();
+            });
+
+            // Close modals when clicking outside
+            window.onclick = (event) => {
+                if (event.target.classList.contains('container')) {
+                    event.target.style.display = 'none';
+                }
+            };
+        }
+    </script>
+</body>
+</html>
