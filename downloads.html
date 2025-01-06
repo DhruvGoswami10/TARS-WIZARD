@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css">
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 </head>
 <body>
     <nav class="main-nav">
@@ -429,24 +430,28 @@
       function handleGoogleSignIn() {
         const provider = new firebase.auth.GoogleAuthProvider();
         firebase.auth().signInWithPopup(provider)
-          .then((result) => {
-            // Save user data to database
-            const user = result.user;
-            firebase.database().ref('users/' + user.uid).set({
-              email: user.email,
-              name: user.displayName,
-              profilePic: user.photoURL
+            .then((result) => {
+                const user = result.user;
+                // Only try to save to database if Firebase is fully initialized
+                if (firebase.database) {
+                    firebase.database().ref('users/' + user.uid).set({
+                        email: user.email,
+                        name: user.displayName,
+                        profilePic: user.photoURL
+                    }).catch(error => {
+                        console.log('Database write skipped:', error.message);
+                    });
+                }
+                
+                // Close the forms regardless of database success
+                loginForm.style.display = 'none';
+                signupForm.style.display = 'none';
+            })
+            .catch((error) => {
+                console.error("Error during Google sign in:", error);
+                alert(error.message);
             });
-            
-            // Close the forms
-            loginForm.style.display = 'none';
-            signupForm.style.display = 'none';
-          })
-          .catch((error) => {
-            console.error("Error during Google sign in:", error);
-            alert(error.message);
-          });
-      }
+    }
 
       // Add click handlers for Google sign-in
       loginGoogleBtn.addEventListener('click', handleGoogleSignIn);
