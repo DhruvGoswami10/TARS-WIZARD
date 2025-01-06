@@ -415,39 +415,30 @@
         const auth = firebase.auth();
         const db = firebase.database();
         
-        // Function to update user count based on actual users in database
-        function updateUserCount() {
-            db.ref('users').once('value')
-                .then((snapshot) => {
-                    const count = snapshot.numChildren();
-                    const userCount = document.getElementById('user-count');
-                    if (userCount) {
-                        userCount.textContent = count.toLocaleString();
-                    }
-                    // Update the metrics
-                    return db.ref('metrics/registeredUsers').set(count);
-                })
-                .catch((error) => {
-                    console.error("Error counting users:", error);
-                });
+        // Modified function to update user count
+        function initializeUserCounter() {
+            const userCountRef = db.ref('metrics/registeredUsers');
+            
+            // Listen for user count changes
+            userCountRef.on('value', (snapshot) => {
+                const userCount = document.getElementById('user-count');
+                if (userCount) {
+                    userCount.textContent = (snapshot.val() || 0).toLocaleString();
+                }
+            });
         }
 
         // Listen for auth state changes
         auth.onAuthStateChanged((user) => {
-            if (user) {
-                // Update count whenever auth state changes
-                updateUserCount();
+            if (user && user.metadata.creationTime === user.metadata.lastSignInTime) {
+                // New user just signed up - increment counter
+                const counterRef = db.ref('metrics/registeredUsers');
+                counterRef.transaction(currentCount => (currentCount || 0) + 1);
             }
         });
 
-        // Listen for changes in the users node
-        db.ref('users').on('value', (snapshot) => {
-            const count = snapshot.numChildren();
-            const userCount = document.getElementById('user-count');
-            if (userCount) {
-                userCount.textContent = count.toLocaleString();
-            }
-        });
+        // Initialize counter
+        initializeUserCounter();
 
         // Rest of your existing session and page view code
         let sessionId = localStorage.getItem('sessionId');
