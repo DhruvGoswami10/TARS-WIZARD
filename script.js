@@ -105,23 +105,25 @@ if(typeof firebase !== 'undefined') {
     const password = document.getElementById("signup-password").value;
     
     auth.createUserWithEmailAndPassword(email, password)
-      .then((userCredential) => {
-        const user = userCredential.user;
-        
-        // First create the user data
-        db.ref("users/" + user.uid).set({
-          email: user.email,
-        });
-
-        document.getElementById("signup-form").style.display = "none";
-        alert("User signed up successfully!");
-        signupBtn.style.display = "none";
-        loginBtn.style.display = "none";
-        logoutBtn.style.display = "inline-block";
-        newPostSection.style.display = "block";
-      })
-      .catch((error) => alert(error.message));
-  });
+        .then((userCredential) => {
+            const user = userCredential.user;
+            
+            // Create user data in database
+            return db.ref("users/" + user.uid).set({
+                email: user.email,
+                createdAt: firebase.database.ServerValue.TIMESTAMP
+            });
+        })
+        .then(() => {
+            document.getElementById("signup-form").style.display = "none";
+            alert("User signed up successfully!");
+            signupBtn.style.display = "none";
+            loginBtn.style.display = "none";
+            logoutBtn.style.display = "inline-block";
+            newPostSection.style.display = "block";
+        })
+        .catch((error) => alert(error.message));
+});
 
   // Login Functionality
   loginBtn.addEventListener("click", () => {
