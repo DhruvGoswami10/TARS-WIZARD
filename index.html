@@ -415,40 +415,44 @@
         const auth = firebase.auth();
         const db = firebase.database();
         
-        // Function to count actual users and update counter
-        function updateUserCount() {
-            db.ref('users').once('value')
+        // Function to safely get user count
+        function getUserCount() {
+            const userCountRef = db.ref('metrics/registeredUsers');
+            userCountRef.once('value')
                 .then((snapshot) => {
-                    const actualCount = snapshot.numChildren();
-                    return db.ref('metrics/registeredUsers').set(actualCount);
+                    const userCount = document.getElementById('user-count');
+                    if (userCount) {
+                        userCount.textContent = (snapshot.val() || 0).toLocaleString();
+                    }
                 })
                 .catch((error) => {
-                    console.error("Error counting users:", error);
+                    console.error("Error getting user count:", error);
                 });
         }
 
-        // Listen for user count changes
+        // Update user count when users node changes
         db.ref('users').on('value', (snapshot) => {
-            const userCount = document.getElementById('user-count');
-            if (userCount) {
-                userCount.textContent = snapshot.numChildren().toLocaleString();
+            if (snapshot.exists()) {
+                const count = snapshot.numChildren();
+                const userCount = document.getElementById('user-count');
+                if (userCount) {
+                    userCount.textContent = count.toLocaleString();
+                    // Update the metrics counter
+                    if (auth.currentUser) {
+                        db.ref('metrics/registeredUsers').set(count);
+                    }
+                }
             }
         });
 
-        // Call once when page loads to ensure correct count
-        updateUserCount();
+        // Call once when page loads
+        getUserCount();
 
-        // Listen for auth state changes
-        auth.onAuthStateChanged((user) => {
-            if (user && user.metadata.creationTime === user.metadata.lastSignInTime) {
-                // New user just signed up - increment counter
-                const counterRef = db.ref('metrics/registeredUsers');
-                counterRef.transaction(currentCount => (currentCount || 0) + 1);
-            }
+        // Remove old listeners when component unmounts
+        window.addEventListener('unload', () => {
+            db.ref('users').off();
+            db.ref('metrics/registeredUsers').off();
         });
-
-        // Initialize counter
-        initializeUserCounter();
 
         // Rest of your existing session and page view code
         let sessionId = localStorage.getItem('sessionId');
