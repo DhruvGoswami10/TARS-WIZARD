@@ -415,90 +415,78 @@
         const auth = firebase.auth();
         const db = firebase.database();
         
-        // Function to update user count without directly reading users node
-        function updateUserCount() {
-            db.ref('metrics/registeredUsers').once('value')
-                .then((snapshot) => {
-                    const userCount = document.getElementById('user-count');
-                    if (userCount) {
-                        userCount.textContent = (snapshot.val() || 0).toLocaleString();
-                    }
-                })
-                .catch((error) => {
-
-                    console.error("Error getting user count:", error);
-                });
-        }
-
-        // Listen for auth state changes
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                // Update the counter display
-                updateUserCount();
-            }
-        });
-
-        // Listen for changes in metrics
-        db.ref('metrics/registeredUsers').on('value', (snapshot) => {
+        // Function to update the displayed counters
+        function updateDisplayedCounters(metricsData) {
             const userCount = document.getElementById('user-count');
-            if (userCount) {
-                userCount.textContent = (snapshot.val() || 0).toLocaleString();
-            }
-        });
-
-        // Initialize page views counter if it doesn't exist
-        function initializePageViews() {
-            const pageViewsRef = db.ref('metrics/pageViews');
-            pageViewsRef.once('value', (snapshot) => {
-                if (!snapshot.exists()) {
-                    pageViewsRef.set(0);
-                }
-            });
-        }
-
-        // Function to increment page views
-        function incrementPageViews() {
-            const pageViewsRef = db.ref('metrics/pageViews');
-            pageViewsRef.transaction((currentViews) => {
-                return (currentViews || 0) + 1;
-            });
-        }
-
-        // Initialize counters when page loads
-        updateUserCount();
-        initializePageViews();
-
-        // Listen for new sessions for page views
-        let sessionId = localStorage.getItem('sessionId');
-        if (!sessionId) {
-            sessionId = Math.random().toString(36).substring(2, 15);
-            localStorage.setItem('sessionId', sessionId);
-            
-            // Increment page views for new sessions only
-            incrementPageViews();
-            
-            // Store session
-            db.ref(`sessions/${sessionId}`).set({
-                timestamp: firebase.database.ServerValue.TIMESTAMP
-            });
-        }
-
-        // Listen for changes in metrics
-        db.ref('metrics').on('value', (snapshot) => {
-            const data = snapshot.val() || { pageViews: 0, registeredUsers: 0 };
-            
-            const userCount = document.getElementById('user-count');
-            if (userCount) {
-                userCount.textContent = (data.registeredUsers || 0).toLocaleString();
-            }
-            
             const pageViews = document.getElementById('page-views');
-            if (pageViews) {
-                pageViews.textContent = (data.pageViews || 0).toLocaleString();
+            
+            if (userCount) {
+                userCount.textContent = (metricsData.registeredUsers || 0).toLocaleString();
             }
+            
+            if (pageViews) {
+                pageViews.textContent = (metricsData.pageViews || 0).toLocaleString();
+            }
+        }
+
+        // Listen for changes in the metrics
+        db.ref('metrics').on('value', (snapshot) => {
+            const metricsData = snapshot.val() || { pageViews: 0, registeredUsers: 0 };
+            updateDisplayedCounters(metricsData);
         });
 
-        // Remove old sessions every hour
+        // Function to generate a unique device ID
+        function generateDeviceId() {
+            const nav = window.navigator;
+            const screen = window.screen;
+            let deviceId = '';
+            
+            // Combine multiple browser-specific attributes
+            deviceId += nav.userAgent.replace(/\D+/g, '');
+            deviceId += screen.height || '';
+            deviceId += screen.width || '';
+            deviceId += screen.colorDepth || '';
+            
+            // Add timestamp for more uniqueness
+            deviceId += Date.now();
+            
+            // Hash the deviceId
+            return btoa(deviceId).replace(/[^a-zA-Z0-9]/g, '').substr(0, 32);
+        }
+
+        // Check if this is a new session
+        const deviceId = localStorage.getItem('deviceId') || generateDeviceId();
+        const lastVisit = localStorage.getItem('lastVisit');
+        const currentTime = Date.now();
+        const sessionTimeout = 30 * 60 * 1000; // 30 minutes
+
+        // Save device ID if it's new
+        if (!localStorage.getItem('deviceId')) {
+            localStorage.setItem('deviceId', deviceId);
+        }
+
+        // Check if this is a new session (first visit or last visit was more than 30 minutes ago)
+        if (!lastVisit || (currentTime - parseInt(lastVisit)) > sessionTimeout) {
+            // Update last visit time
+            localStorage.setItem('lastVisit', currentTime.toString());
+            
+            // Increment page views counter
+            db.ref('metrics/pageViews').transaction(currentValue => {
+                return (currentValue || 0) + 1;
+            }).catch(error => {
+                console.error("Error updating page views:", error);
+            });
+
+            // Record session
+            db.ref(`sessions/${deviceId}`).set({
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                deviceId: deviceId
+            }).catch(error => {
+                console.error("Error saving session:", error);
+            });
+        }
+
+        // Clean up old sessions (run every hour)
         setInterval(() => {
             const yesterday = Date.now() - (24 * 60 * 60 * 1000);
             db.ref('sessions').orderByChild('timestamp').endAt(yesterday)
@@ -511,7 +499,8 @@
                     if (Object.keys(updates).length > 0) {
                         db.ref('sessions').update(updates);
                     }
-                });
+                })
+                .catch(error => console.log('Session cleanup failed:', error));
         }, 60 * 60 * 1000);
     </script>
 </body>
