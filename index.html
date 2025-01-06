@@ -415,18 +415,28 @@
         const auth = firebase.auth();
         const db = firebase.database();
         
-        // Modified function to update user count
-        function initializeUserCounter() {
-            const userCountRef = db.ref('metrics/registeredUsers');
-            
-            // Listen for user count changes
-            userCountRef.on('value', (snapshot) => {
-                const userCount = document.getElementById('user-count');
-                if (userCount) {
-                    userCount.textContent = (snapshot.val() || 0).toLocaleString();
-                }
-            });
+        // Function to count actual users and update counter
+        function updateUserCount() {
+            db.ref('users').once('value')
+                .then((snapshot) => {
+                    const actualCount = snapshot.numChildren();
+                    return db.ref('metrics/registeredUsers').set(actualCount);
+                })
+                .catch((error) => {
+                    console.error("Error counting users:", error);
+                });
         }
+
+        // Listen for user count changes
+        db.ref('users').on('value', (snapshot) => {
+            const userCount = document.getElementById('user-count');
+            if (userCount) {
+                userCount.textContent = snapshot.numChildren().toLocaleString();
+            }
+        });
+
+        // Call once when page loads to ensure correct count
+        updateUserCount();
 
         // Listen for auth state changes
         auth.onAuthStateChanged((user) => {
