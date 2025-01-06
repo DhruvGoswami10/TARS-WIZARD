@@ -17,34 +17,8 @@ if(typeof firebase !== 'undefined') {
   const db = firebase.database();
   const analytics = firebase.analytics();
 
-  // Update metrics when a new user signs up
-  auth.onAuthStateChanged((user) => {
-    if (user && user.metadata.creationTime === user.metadata.lastSignInTime) {
-      // This is a new user
-      const counterRef = db.ref('metrics/registeredUsers');
-      counterRef.transaction(currentValue => (currentValue || 0) + 1);
-    }
-    // ...existing auth state change code...
-    const userEmailElement = document.getElementById("user-email");
-    const notificationBell = document.getElementById("notification-bell");
-    if (user) {
-      logoutBtn.style.display = "inline-block";
-      loginBtn.style.display = "none";
-      signupBtn.style.display = "none";
-      userEmailElement.style.display = "inline-block";
-      userEmailElement.textContent = user.email;
-      notificationBell.style.display = "flex";
-      loadNotifications();
-    } else {
-      logoutBtn.style.display = "none";
-      loginBtn.style.display = "inline-block";
-      signupBtn.style.display = "inline-block";
-      userEmailElement.style.display = "none";
-      userEmailElement.textContent = "";
-      notificationBell.style.display = "none";
-    }
-  });
-
+  console.log("Firebase initialized successfully");
+  
   const signupBtn = document.getElementById("signup-btn");
   const loginBtn = document.getElementById("login-btn");
   const logoutBtn = document.getElementById("logout-btn");
@@ -100,6 +74,7 @@ if(typeof firebase !== 'undefined') {
     document.getElementById("signup-form").style.display = "flex";
   });
 
+  // Update the signup handler
   document.getElementById("signup-submit").addEventListener("click", () => {
     const email = document.getElementById("signup-email").value;
     const password = document.getElementById("signup-password").value;
@@ -108,19 +83,20 @@ if(typeof firebase !== 'undefined') {
         .then((userCredential) => {
             const user = userCredential.user;
             
-            // Create user data and increment counter atomically
-            const updates = {};
-            updates[`users/${user.uid}`] = {
+            // First create the user data
+            return db.ref(`users/${user.uid}`).set({
                 email: user.email,
                 createdAt: firebase.database.ServerValue.TIMESTAMP
-            };
-            
-            // Increment the counter using a transaction
-            db.ref('metrics/registeredUsers').transaction(current => {
-                return (current || 0) + 1;
+            }).then(() => {
+                // Then try to increment the counter
+                return db.ref('metrics/registeredUsers').transaction((currentValue) => {
+                    return (currentValue || 0) + 1;
+                });
+            }).catch(error => {
+                // If counter update fails, at least the user is created
+                console.warn("Counter update failed:", error);
+                return Promise.resolve();
             });
-
-            return db.ref().update(updates);
         })
         .then(() => {
             document.getElementById("signup-form").style.display = "none";
@@ -130,10 +106,26 @@ if(typeof firebase !== 'undefined') {
             logoutBtn.style.display = "inline-block";
             newPostSection.style.display = "block";
         })
-        .catch((error) => alert(error.message));
+        .catch((error) => {
+            console.error("Error in signup:", error);
+            alert(error.message);
+        });
 });
 
-  // Login Functionality
+// Add this new function to sync the users count
+function syncUsersCount() {
+    db.ref('users').once('value')
+        .then(snapshot => {
+            const userCount = snapshot.numChildren();
+            return db.ref('metrics/registeredUsers').set(userCount);
+        })
+        .catch(error => console.error("Error syncing users count:", error));
+}
+
+// Call syncUsersCount periodically (every 5 minutes) to ensure accuracy
+setInterval(syncUsersCount, 5 * 60 * 1000);
+
+// Login Functionality
   loginBtn.addEventListener("click", () => {
     document.getElementById("login-form").style.display = "flex";
   });
@@ -162,6 +154,27 @@ if(typeof firebase !== 'undefined') {
     });
   });
 
+  auth.onAuthStateChanged((user) => {
+    const userEmailElement = document.getElementById("user-email");
+    const notificationBell = document.getElementById("notification-bell");
+    if (user) {
+      logoutBtn.style.display = "inline-block";
+      loginBtn.style.display = "none";
+      signupBtn.style.display = "none";
+      userEmailElement.style.display = "inline-block";
+      userEmailElement.textContent = user.email;
+      notificationBell.style.display = "flex";
+      loadNotifications();
+    } else {
+      logoutBtn.style.display = "none";
+      loginBtn.style.display = "inline-block";
+      signupBtn.style.display = "inline-block";
+      userEmailElement.style.display = "none";
+      userEmailElement.textContent = "";
+      notificationBell.style.display = "none";
+    }
+  });
+
   function loadPosts(loggedInUserId) {
     const postsRef = db.ref("categories/General Discussion/threads");
     postsRef.off();
@@ -180,17 +193,58 @@ if(typeof firebase !== 'undefined') {
         const postData = thread.val();
         const userId = postData.userId;
         
-        // Get both user data and post author email
-        const promise = Promise.all([
-          db.ref("users/" + userId).once("value"),
-          auth.currentUser ? auth.currentUser.email : null
-        ]).then(([userSnapshot, currentUserEmail]) => {
-          const userData = userSnapshot.val();
-          // Show actual email regardless of domain
-          const userEmail = userData?.email || postData.authorEmail || "unknown user";
-          const postDiv = createPostElement(thread.key, postData, userEmail, userId === loggedInUserId);
-          postsSection.appendChild(postDiv);
-        });
+        // Simplified user data fetching
+        const promise = db.ref("users/" + userId).once("value")
+          .then(userSnapshot => {
+            const userData = userSnapshot.val();
+            // Always show the email if it exists
+            const userEmail = userData?.email || "deleted user";
+            const postDiv = document.createElement("div");
+            postDiv.classList.add("post");
+            
+            const deleteButton = loggedInUserId && loggedInUserId === userId 
+              ? `<button class="delete-btn">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 69 14" class="svgIcon bin-top">
+                    <g clip-path="url(#clip0_35_24)">
+                      <path fill="black" d="M20.8232 2.62734L19.9948 4.21304C19.8224 4.54309 19.4808 4.75 19.1085 4.75H4.92857C2.20246 4.75 0 6.87266 0 9.5C0 12.1273 2.20246 14.25 4.92857 14.25H64.0714C66.7975 14.25 69 12.1273 69 9.5C69 6.87266 66.7975 4.75 64.0714 4.75H49.8915C49.5192 4.75 49.1776 4.54309 49.0052 4.21305L48.1768 2.62734C47.3451 1.00938 45.6355 0 43.7719 0H25.2281C23.3645 0 21.6549 1.00938 20.8232 2.62734ZM64.0023 20.0648C64.0397 19.4882 63.5822 19 63.0044 19H5.99556C5.4178 19 4.96025 19.4882 4.99766 20.0648L8.19375 69.3203C8.44018 73.0758 11.6746 76 15.5712 76H53.4288C57.3254 76 60.5598 73.0758 60.8062 69.3203L64.0023 20.0648Z"></path>
+                    </g>
+                    <defs>
+                      <clipPath id="clip0_35_24">
+                        <rect fill="white" height="14" width="69"></rect>
+                      </clipPath>
+                    </defs>
+                  </svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 69 57" class="svgIcon bin-bottom">
+                    <g clip-path="url(#clip0_35_22)">
+                      <path fill="black" d="M20.8232 -16.3727L19.9948 -14.787C19.8224 -14.4569 19.4808 -14.25 19.1085 -14.25H4.92857C2.20246 -14.25 0 -12.1273 0 -9.5C0 -6.8727 2.20246 -4.75 4.92857 -4.75H64.0714C66.7975 -4.75 69 -6.8727 69 -9.5C69 -12.1273 66.7975 -14.25 64.0714 -14.25H49.8915C49.5192 -14.25 49.1776 -14.4569 49.0052 -14.787L48.1768 -16.3727C47.3451 -17.9906 45.6355 -19 43.7719 -19H25.2281C23.3645 -19 21.6549 -17.9906 20.8232 -16.3727ZM64.0023 1.0648C64.0397 0.4882 63.5822 0 63.0044 0H5.99556C5.4178 0 4.96025 0.4882 4.99766 1.0648L8.19375 50.3203C8.44018 54.0758 11.6746 57 15.5712 57H53.4288C57.3254 57 60.5598 54.0758 60.8062 50.3203L64.0023 1.0648Z"></path>
+                    </g>
+                    <defs>
+                      <clipPath id="clip0_35_22)">
+                        <rect fill="white" height="57" width="69"></rect>
+                      </clipPath>
+                    </defs>
+                  </svg>
+                </button>` 
+              : '';
+            
+            postDiv.innerHTML = `
+              <div class="post-content">${postData.content}</div>
+              <div class="post-footer">
+                <span class="post-author">Posted by ${userEmail}</span>
+                ${deleteButton}
+              </div>
+            `;
+            
+            if (deleteButton) {
+              postDiv.querySelector(".delete-btn").addEventListener("click", (event) => {
+                event.stopPropagation();
+                deletePost("General Discussion", thread.key);
+              });
+            }
+            
+            postDiv.addEventListener("click", () => openPost("General Discussion", thread.key, postData, userEmail));
+            postsSection.appendChild(postDiv);
+          });
         
         promises.push(promise);
       });
@@ -282,7 +336,6 @@ if(typeof firebase !== 'undefined') {
         db.ref(`categories/${category}/threads`).push({
           content: content,
           userId: user.uid,
-          authorEmail: user.email, // Store the email when creating the post
           timestamp: firebase.database.ServerValue.TIMESTAMP
         }).then(() => {
           postQuill.setText('');
@@ -699,6 +752,21 @@ if(typeof firebase !== 'undefined') {
     }
   });
   
+  // Update the metrics listener to handle permission errors
+  db.ref('metrics').on('value', 
+    (snapshot) => {
+        const metricsData = snapshot.val() || { pageViews: 0, registeredUsers: 0 };
+        updateDisplayedCounters(metricsData);
+    },
+    (error) => {
+        console.warn("Error reading metrics:", error);
+        // Set default values if read fails
+        updateDisplayedCounters({ pageViews: 0, registeredUsers: 0 });
+    }
+);
+
+// ...existing code...
+
 } else {
     console.error("Firebase is not loaded");
 }
