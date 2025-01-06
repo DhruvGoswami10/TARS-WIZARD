@@ -414,45 +414,30 @@
         const app = firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
-        
-        // Function to safely get user count
-        function getUserCount() {
-            const userCountRef = db.ref('metrics/registeredUsers');
-            userCountRef.once('value')
-                .then((snapshot) => {
-                    const userCount = document.getElementById('user-count');
-                    if (userCount) {
-                        userCount.textContent = (snapshot.val() || 0).toLocaleString();
-                    }
+
+        // Simplified user count function
+        function updateUserCount() {
+            db.ref('users').once('value')
+                .then(snapshot => {
+                    const count = snapshot.numChildren();
+                    db.ref('metrics/registeredUsers').set(count)
+                        .then(() => {
+                            const userCount = document.getElementById('user-count');
+                            if (userCount) {
+                                userCount.textContent = count.toLocaleString();
+                            }
+                        });
                 })
-                .catch((error) => {
-                    console.error("Error getting user count:", error);
-                });
+                .catch(error => console.error("Error updating user count:", error));
         }
 
-        // Update user count when users node changes
-        db.ref('users').on('value', (snapshot) => {
-            if (snapshot.exists()) {
-                const count = snapshot.numChildren();
-                const userCount = document.getElementById('user-count');
-                if (userCount) {
-                    userCount.textContent = count.toLocaleString();
-                    // Update the metrics counter
-                    if (auth.currentUser) {
-                        db.ref('metrics/registeredUsers').set(count);
-                    }
-                }
-            }
+        // Listen for changes in users node
+        db.ref('users').on('value', () => {
+            updateUserCount();
         });
 
         // Call once when page loads
-        getUserCount();
-
-        // Remove old listeners when component unmounts
-        window.addEventListener('unload', () => {
-            db.ref('users').off();
-            db.ref('metrics/registeredUsers').off();
-        });
+        updateUserCount();
 
         // Rest of your existing session and page view code
         let sessionId = localStorage.getItem('sessionId');
