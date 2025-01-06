@@ -17,8 +17,34 @@ if(typeof firebase !== 'undefined') {
   const db = firebase.database();
   const analytics = firebase.analytics();
 
-  console.log("Firebase initialized successfully");
-  
+  // Update metrics when a new user signs up
+  auth.onAuthStateChanged((user) => {
+    if (user && user.metadata.creationTime === user.metadata.lastSignInTime) {
+      // This is a new user
+      const counterRef = db.ref('metrics/registeredUsers');
+      counterRef.transaction(currentValue => (currentValue || 0) + 1);
+    }
+    // ...existing auth state change code...
+    const userEmailElement = document.getElementById("user-email");
+    const notificationBell = document.getElementById("notification-bell");
+    if (user) {
+      logoutBtn.style.display = "inline-block";
+      loginBtn.style.display = "none";
+      signupBtn.style.display = "none";
+      userEmailElement.style.display = "inline-block";
+      userEmailElement.textContent = user.email;
+      notificationBell.style.display = "flex";
+      loadNotifications();
+    } else {
+      logoutBtn.style.display = "none";
+      loginBtn.style.display = "inline-block";
+      signupBtn.style.display = "inline-block";
+      userEmailElement.style.display = "none";
+      userEmailElement.textContent = "";
+      notificationBell.style.display = "none";
+    }
+  });
+
   const signupBtn = document.getElementById("signup-btn");
   const loginBtn = document.getElementById("login-btn");
   const logoutBtn = document.getElementById("logout-btn");
@@ -84,11 +110,7 @@ if(typeof firebase !== 'undefined') {
         
         // First create the user data
         db.ref("users/" + user.uid).set({
-            email: user.email,
-        }).then(() => {
-            // Then increment the registered users counter
-            const counterRef = db.ref('metrics/registeredUsers');
-            counterRef.transaction(currentValue => (currentValue || 0) + 1);
+          email: user.email,
         });
 
         document.getElementById("signup-form").style.display = "none";
@@ -128,27 +150,6 @@ if(typeof firebase !== 'undefined') {
       logoutBtn.style.display = "none";
       newPostSection.style.display = "none";
     });
-  });
-
-  auth.onAuthStateChanged((user) => {
-    const userEmailElement = document.getElementById("user-email");
-    const notificationBell = document.getElementById("notification-bell");
-    if (user) {
-      logoutBtn.style.display = "inline-block";
-      loginBtn.style.display = "none";
-      signupBtn.style.display = "none";
-      userEmailElement.style.display = "inline-block";
-      userEmailElement.textContent = user.email;
-      notificationBell.style.display = "flex";
-      loadNotifications();
-    } else {
-      logoutBtn.style.display = "none";
-      loginBtn.style.display = "inline-block";
-      signupBtn.style.display = "inline-block";
-      userEmailElement.style.display = "none";
-      userEmailElement.textContent = "";
-      notificationBell.style.display = "none";
-    }
   });
 
   function loadPosts(loggedInUserId) {
