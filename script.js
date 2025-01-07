@@ -69,6 +69,24 @@ if(typeof firebase !== 'undefined') {
     }
   });
 
+  // Forum Guidelines Popup Handler
+  document.addEventListener('DOMContentLoaded', () => {
+    const guidelinesPopup = document.getElementById('guidelines-popup');
+    const understandBtn = document.getElementById('understand-btn');
+    
+    // Check if user has already accepted guidelines
+    const hasAcceptedGuidelines = localStorage.getItem('acceptedForumGuidelines');
+    
+    if (!hasAcceptedGuidelines && guidelinesPopup) {
+        guidelinesPopup.style.display = 'flex';
+        
+        understandBtn.addEventListener('click', () => {
+            guidelinesPopup.style.display = 'none';
+            localStorage.setItem('acceptedForumGuidelines', 'true');
+        });
+    }
+  });
+
   // Signup Functionality
   signupBtn.addEventListener("click", () => {
     document.getElementById("signup-form").style.display = "flex";
@@ -179,6 +197,25 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     }
     
     loadAllCategoryPreviews();
+
+    const replyEditor = document.getElementById('reply-editor');
+    const replyBtn = document.getElementById('reply-btn');
+    const loginPrompt = document.querySelector('.login-prompt');
+    
+    if (user) {
+        if (replyEditor && replyBtn) {
+            replyEditor.style.display = 'block';
+            replyBtn.style.display = 'block';
+        }
+        if (loginPrompt) {
+            loginPrompt.remove();
+        }
+    } else {
+        if (replyEditor && replyBtn) {
+            replyEditor.style.display = 'none';
+            replyBtn.style.display = 'none';
+        }
+    }
   });
 
   function loadPosts(loggedInUserId) {
@@ -285,6 +322,35 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     document.querySelector('.categories').style.display = 'none';
     postDetailsSection.style.display = "block";
     loadReplies(category, postId);
+
+    // Add authentication check for reply section
+    const replyEditor = document.getElementById('reply-editor');
+    const replyBtn = document.getElementById('reply-btn');
+    
+    if (auth.currentUser) {
+        replyEditor.style.display = 'block';
+        replyBtn.style.display = 'block';
+    } else {
+        replyEditor.style.display = 'none';
+        replyBtn.style.display = 'none';
+        // Updated login prompt with icon
+        const loginPrompt = document.createElement('div');
+        loginPrompt.className = 'login-prompt';
+        loginPrompt.innerHTML = `
+            <p>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M13.8 12H3"/>
+                </svg>
+                Please <button class="inline-login-btn">login</button> to reply to this post
+            </p>
+        `;
+        // Add click handler for the login button
+        loginPrompt.querySelector('.inline-login-btn').addEventListener('click', () => {
+            document.getElementById('login-form').style.display = 'flex';
+        });
+        // Insert login prompt after replies section
+        document.getElementById('replies').after(loginPrompt);
+    }
   }
 
   function loadReplies(category, postId) {
@@ -863,8 +929,38 @@ if(typeof firebase !== 'undefined') {
 
 // ...existing code...
 
-} else {
-    console.error("Firebase is not loaded");
+// Function to update the displayed counters
+function updateDisplayedCounters(metricsData) {
+  if (typeof metricsData !== 'object') {
+    console.warn('Invalid metrics data received:', metricsData);
+    metricsData = { pageViews: 0, registeredUsers: 0 };
+  }
+
+  const userCount = document.getElementById('user-count');
+  const pageViews = document.getElementById('page-views');
+  
+  if (userCount) {
+    userCount.textContent = (metricsData.registeredUsers || 0).toLocaleString();
+  }
+  
+  if (pageViews) {
+    pageViews.textContent = (metricsData.pageViews || 0).toLocaleString();
+  }
+}
+
+// Update the metrics listener to handle errors gracefully
+if(typeof firebase !== 'undefined') {
+  const db = firebase.database();
+  db.ref('metrics').on('value', 
+    (snapshot) => {
+      const metricsData = snapshot.val() || { pageViews: 0, registeredUsers: 0 };
+      updateDisplayedCounters(metricsData);
+    },
+    (error) => {
+      console.warn("Error reading metrics:", error);
+      updateDisplayedCounters({ pageViews: 0, registeredUsers: 0 });
+    }
+  );
 }
 
 // Add styles for the login prompt
@@ -896,4 +992,4 @@ document.head.insertAdjacentHTML('beforeend', `
       color: #0056b3;
     }
   </style>
-`);
+`)};
