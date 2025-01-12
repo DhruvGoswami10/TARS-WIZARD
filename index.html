@@ -421,19 +421,6 @@
         const auth = firebase.auth();
         const db = firebase.database();
 
-        // Function to generate a unique device ID
-        function generateDeviceId() {
-            const nav = window.navigator;
-            const screen = window.screen;
-            let deviceId = '';
-            deviceId += nav.userAgent.replace(/\D+/g, '');
-            deviceId += screen.height || '';
-            deviceId += screen.width || '';
-            deviceId += screen.colorDepth || '';
-            deviceId += Date.now();
-            return btoa(deviceId).replace(/[^a-zA-Z0-9]/g, '').substr(0, 32);
-        }
-
         // Session Management
         function generateSessionId() {
             return 'session_' + Date.now().toString(36) + Math.random().toString(36).substring(2);
@@ -456,7 +443,7 @@
                     const newSessionId = generateSessionId();
                     localStorage.setItem('sessionId', newSessionId);
                     
-                    // Single transaction for page views
+                    // Increment page views in a single transaction
                     await db.ref('metrics/pageViews').transaction(currentValue => {
                         return (currentValue || 0) + 1;
                     });
@@ -465,10 +452,6 @@
                         timestamp: firebase.database.ServerValue.TIMESTAMP,
                         startTime: currentTime
                     });
-
-                    console.log('New session started, page view counted');
-                } else {
-                    console.log('Existing session, page view not counted');
                 }
 
                 localStorage.setItem('lastActivity', currentTime.toString());
@@ -477,22 +460,10 @@
             }
         }
 
-        // Remove old event listeners and only use this one for page views
-        document.addEventListener('DOMContentLoaded', () => {
-            handlePageView();
-            
-            // Update display only when metrics change
-            db.ref('metrics').on('value', snapshot => {
-                const metrics = snapshot.val() || { pageViews: 0, registeredUsers: 0 };
-                document.getElementById('page-views').textContent = metrics.pageViews.toLocaleString();
-                document.getElementById('user-count').textContent = metrics.registeredUsers.toLocaleString();
-            });
-        });
+        // Initialize page view tracking once when the page loads
+        document.addEventListener('DOMContentLoaded', handlePageView, { once: true });
 
-        // Remove duplicate event listeners and functions
-        // Remove: incrementPageViews, updateDisplayedCounters, and their associated listeners
-
-        // Update metrics display
+        // Update metrics display when values change
         db.ref('metrics').on('value', snapshot => {
             const metrics = snapshot.val() || { pageViews: 0, registeredUsers: 0 };
             document.getElementById('page-views').textContent = metrics.pageViews.toLocaleString();
