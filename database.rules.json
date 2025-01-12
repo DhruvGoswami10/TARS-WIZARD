@@ -1,0 +1,57 @@
+{
+  "rules": {
+    ".read": true,
+    "metrics": {
+      ".read": true,
+      "registeredUsers": {
+        ".read": true,
+        ".write": true
+      },
+      "pageViews": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "users": {
+      ".read": true,
+      ".indexOn": ["email"],
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "$uid === auth.uid || auth != null",
+        "notifications": {
+          ".read": "$uid === auth.uid",
+          ".write": "$uid === auth.uid || auth != null",
+          ".indexOn": ["timestamp", "read"]
+        }
+      }
+    },
+    "categories": {
+      ".read": true,
+      ".write": "auth != null",
+      "$category": {
+        "threads": {
+          ".read": true,
+          ".indexOn": ["timestamp", "upvoteCount"],
+          "$threadId": {
+            ".read": true,
+            ".write": "auth != null",
+            "replies": {
+              ".read": true,
+              ".write": "auth != null",
+              ".indexOn": ["timestamp"]
+            },
+            "upvotes": {
+              ".read": true,
+              ".write": "auth != null"
+            }
+          }
+        }
+      }
+    },
+    "sessions": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["timestamp", "deviceId"]
+    }
+  }
+}

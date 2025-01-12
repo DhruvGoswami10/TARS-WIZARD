@@ -1,0 +1,9 @@
+{
+  "name": "tars-ai",
+  "version": "1.0.0",
+  "description": "TARS AI Project",
+  "scripts": {
+    "deploy:functions": "firebase deploy --only functions"
+  },
+  "private": true
+}
