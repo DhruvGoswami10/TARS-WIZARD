@@ -3,6 +3,7 @@
     ".read": true,
     "metrics": {
       ".read": true,
+      ".write": true,
       "registeredUsers": {
         ".read": true,
         ".write": true
