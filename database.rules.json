@@ -9,7 +9,8 @@
       },
       "pageViews": {
         ".read": true,
-        ".write": true
+        ".write": true,
+        ".validate": "newData.isNumber() && (!data.exists() || newData.val() > data.val())"
       }
     },
     "users": {
@@ -51,7 +52,10 @@
     "sessions": {
       ".read": true,
       ".write": true,
-      ".indexOn": ["timestamp", "deviceId"]
+      ".indexOn": ["timestamp", "startTime"],
+      "$sessionId": {
+        ".validate": "newData.hasChildren(['timestamp', 'startTime']) && newData.child('timestamp').isNumber() && newData.child('startTime').isNumber() && (!data.exists() || newData.child('startTime').val() >= data.child('startTime').val())"
+      }
     }
   }
 }
