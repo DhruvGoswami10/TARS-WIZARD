@@ -434,65 +434,71 @@
             return btoa(deviceId).replace(/[^a-zA-Z0-9]/g, '').substr(0, 32);
         }
 
-        // Function to increment page views
-        async function incrementPageViews() {
+        // Session Management
+        function generateSessionId() {
+            return 'session_' + Date.now().toString(36) + Math.random().toString(36).substring(2);
+        }
+
+        // Single source of truth for page view counting
+        async function handlePageView() {
             try {
-                const deviceId = localStorage.getItem('deviceId') || generateDeviceId();
-                const lastVisit = localStorage.getItem('lastVisit');
+                const sessionId = localStorage.getItem('sessionId');
+                const lastActivity = localStorage.getItem('lastActivity');
                 const currentTime = Date.now();
                 const sessionTimeout = 30 * 60 * 1000; // 30 minutes
 
-                // Save device ID if new
-                if (!localStorage.getItem('deviceId')) {
-                    localStorage.setItem('deviceId', deviceId);
-                }
+                // Check if this is a new session
+                const isNewSession = !sessionId || 
+                                   !lastActivity || 
+                                   (currentTime - parseInt(lastActivity)) > sessionTimeout;
 
-                // Only increment if this is a new session
-                if (!lastVisit || (currentTime - parseInt(lastVisit)) > sessionTimeout) {
-                    localStorage.setItem('lastVisit', currentTime.toString());
+                if (isNewSession) {
+                    const newSessionId = generateSessionId();
+                    localStorage.setItem('sessionId', newSessionId);
                     
+                    // Single transaction for page views
                     await db.ref('metrics/pageViews').transaction(currentValue => {
                         return (currentValue || 0) + 1;
                     });
 
-                    await db.ref(`sessions/${deviceId}`).set({
+                    await db.ref(`sessions/${newSessionId}`).set({
                         timestamp: firebase.database.ServerValue.TIMESTAMP,
-                        deviceId: deviceId
+                        startTime: currentTime
                     });
+
+                    console.log('New session started, page view counted');
+                } else {
+                    console.log('Existing session, page view not counted');
                 }
+
+                localStorage.setItem('lastActivity', currentTime.toString());
             } catch (error) {
-                console.error("Error updating page views:", error);
+                console.error('Error handling page view:', error);
             }
         }
 
-        // Update display counters
-        function updateDisplayedCounters(metricsData) {
-            const userCount = document.getElementById('user-count');
-            const pageViews = document.getElementById('page-views');
+        // Remove old event listeners and only use this one for page views
+        document.addEventListener('DOMContentLoaded', () => {
+            handlePageView();
             
-            if (userCount) {
-                userCount.textContent = (metricsData.registeredUsers || 0).toLocaleString();
-            }
-            if (pageViews) {
-                pageViews.textContent = (metricsData.pageViews || 0).toLocaleString();
-            }
-        }
+            // Update display only when metrics change
+            db.ref('metrics').on('value', snapshot => {
+                const metrics = snapshot.val() || { pageViews: 0, registeredUsers: 0 };
+                document.getElementById('page-views').textContent = metrics.pageViews.toLocaleString();
+                document.getElementById('user-count').textContent = metrics.registeredUsers.toLocaleString();
+            });
+        });
 
-        // Listen for metrics changes
-        db.ref('metrics').on('value', 
-            (snapshot) => {
-                const metricsData = snapshot.val() || { pageViews: 0, registeredUsers: 0 };
-                updateDisplayedCounters(metricsData);
-            },
-            (error) => {
-                console.warn("Error reading metrics:", error);
-                updateDisplayedCounters({ pageViews: 0, registeredUsers: 0 });
-            }
-        );
+        // Remove duplicate event listeners and functions
+        // Remove: incrementPageViews, updateDisplayedCounters, and their associated listeners
 
-        // Increment page views when DOM loads
-        document.addEventListener('DOMContentLoaded', incrementPageViews);
-    
+        // Update metrics display
+        db.ref('metrics').on('value', snapshot => {
+            const metrics = snapshot.val() || { pageViews: 0, registeredUsers: 0 };
+            document.getElementById('page-views').textContent = metrics.pageViews.toLocaleString();
+            document.getElementById('user-count').textContent = metrics.registeredUsers.toLocaleString();
+        });
+
         // Auth state listener
         auth.onAuthStateChanged((user) => {
             if (user) {
