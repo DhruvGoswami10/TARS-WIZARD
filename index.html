@@ -411,7 +411,7 @@
             apiKey: "AIzaSyBOEOxU866-jIoT0KIO-hBG3GbUaTEnsQg",
             authDomain: "fir-forums-54bdb.firebaseapp.com",
             projectId: "fir-forums-54bdb",
-            storageBucket: "fir-forums-54bdb.appspot.com",
+            storageBucket: "fir-forums-54bdb",
             messagingSenderId: "159128608485",
             appId: "1:159128608485:web:b68c2b41f4ba97c28d3e0c",
             measurementId: "G-J50YZC2H2L"
@@ -420,6 +420,78 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
+
+        // Function to generate a unique device ID
+        function generateDeviceId() {
+            const nav = window.navigator;
+            const screen = window.screen;
+            let deviceId = '';
+            deviceId += nav.userAgent.replace(/\D+/g, '');
+            deviceId += screen.height || '';
+            deviceId += screen.width || '';
+            deviceId += screen.colorDepth || '';
+            deviceId += Date.now();
+            return btoa(deviceId).replace(/[^a-zA-Z0-9]/g, '').substr(0, 32);
+        }
+
+        // Function to increment page views
+        async function incrementPageViews() {
+            try {
+                const deviceId = localStorage.getItem('deviceId') || generateDeviceId();
+                const lastVisit = localStorage.getItem('lastVisit');
+                const currentTime = Date.now();
+                const sessionTimeout = 30 * 60 * 1000; // 30 minutes
+
+                // Save device ID if new
+                if (!localStorage.getItem('deviceId')) {
+                    localStorage.setItem('deviceId', deviceId);
+                }
+
+                // Only increment if this is a new session
+                if (!lastVisit || (currentTime - parseInt(lastVisit)) > sessionTimeout) {
+                    localStorage.setItem('lastVisit', currentTime.toString());
+                    
+                    await db.ref('metrics/pageViews').transaction(currentValue => {
+                        return (currentValue || 0) + 1;
+                    });
+
+                    await db.ref(`sessions/${deviceId}`).set({
+                        timestamp: firebase.database.ServerValue.TIMESTAMP,
+                        deviceId: deviceId
+                    });
+                }
+            } catch (error) {
+                console.error("Error updating page views:", error);
+            }
+        }
+
+        // Update display counters
+        function updateDisplayedCounters(metricsData) {
+            const userCount = document.getElementById('user-count');
+            const pageViews = document.getElementById('page-views');
+            
+            if (userCount) {
+                userCount.textContent = (metricsData.registeredUsers || 0).toLocaleString();
+            }
+            if (pageViews) {
+                pageViews.textContent = (metricsData.pageViews || 0).toLocaleString();
+            }
+        }
+
+        // Listen for metrics changes
+        db.ref('metrics').on('value', 
+            (snapshot) => {
+                const metricsData = snapshot.val() || { pageViews: 0, registeredUsers: 0 };
+                updateDisplayedCounters(metricsData);
+            },
+            (error) => {
+                console.warn("Error reading metrics:", error);
+                updateDisplayedCounters({ pageViews: 0, registeredUsers: 0 });
+            }
+        );
+
+        // Increment page views when DOM loads
+        document.addEventListener('DOMContentLoaded', incrementPageViews);
     
         // Auth state listener
         auth.onAuthStateChanged((user) => {
@@ -491,6 +563,84 @@
             const metricsData = snapshot.val() || { pageViews: 0, registeredUsers: 0 };
             document.getElementById('user-count').textContent = metricsData.registeredUsers || 0;
             document.getElementById('page-views').textContent = metricsData.pageViews || 0;
+        });
+
+        // Session Management Functions
+        function generateSessionId() {
+            return 'session_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        }
+
+        async function handlePageView() {
+            try {
+                const sessionId = localStorage.getItem('sessionId');
+                const lastActivity = localStorage.getItem('lastActivity');
+                const currentTime = Date.now();
+                const sessionTimeout = 30 * 60 * 1000; // 30 minutes in milliseconds
+
+                // Check if this is a new session
+                const isNewSession = !sessionId || 
+                                !lastActivity || 
+                                (currentTime - parseInt(lastActivity)) > sessionTimeout;
+
+                if (isNewSession) {
+                    // Generate new session
+                    const newSessionId = generateSessionId();
+                    localStorage.setItem('sessionId', newSessionId);
+                    
+                    // Increment page views counter
+                    await db.ref('metrics/pageViews').transaction(currentValue => {
+                        return (currentValue || 0) + 1;
+                    });
+
+                    // Record session
+                    await db.ref(`sessions/${newSessionId}`).set({
+                        timestamp: firebase.database.ServerValue.TIMESTAMP,
+                        startTime: currentTime
+                    });
+
+                    console.log('New session started, page view counted');
+                } else {
+                    console.log('Existing session, page view not counted');
+                }
+
+                // Update last activity timestamp
+                localStorage.setItem('lastActivity', currentTime.toString());
+
+            } catch (error) {
+                console.error('Error handling page view:', error);
+            }
+        }
+
+        // Clean up expired sessions periodically
+        function cleanupSessions() {
+            const expiryTime = Date.now() - (30 * 60 * 1000); // 30 minutes ago
+            const sessionsRef = db.ref('sessions');
+            
+            sessionsRef.orderByChild('timestamp')
+                .endAt(expiryTime)
+                .once('value')
+                .then(snapshot => {
+                    const updates = {};
+                    snapshot.forEach(child => {
+                        updates[child.key] = null;
+                    });
+                    if (Object.keys(updates).length > 0) {
+                        sessionsRef.update(updates);
+                    }
+                });
+        }
+
+        // Initialize page view tracking
+        document.addEventListener('DOMContentLoaded', handlePageView);
+        
+        // Clean up sessions every 5 minutes
+        setInterval(cleanupSessions, 5 * 60 * 1000);
+
+        // Update metrics display
+        db.ref('metrics').on('value', snapshot => {
+            const metrics = snapshot.val() || { pageViews: 0, registeredUsers: 0 };
+            document.getElementById('page-views').textContent = metrics.pageViews.toLocaleString();
+            document.getElementById('user-count').textContent = metrics.registeredUsers.toLocaleString();
         });
     </script>
     
