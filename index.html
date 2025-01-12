@@ -386,13 +386,11 @@
             const stars = document.querySelector('.stars');
             const x = e.clientX / window.innerWidth;
             const y = e.clientY / window.innerHeight;
-            
             stars.style.transform = `translate(${x * 50}px, ${y * 50}px)`;
         });
-
+    
         // Feature cards animation on scroll
         const cards = document.querySelectorAll('.feature-card');
-        
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
@@ -400,116 +398,101 @@
                 }
             });
         }, { threshold: 0.1 });
-
         cards.forEach(card => observer.observe(card));
     </script>
+    
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-functions-compat.js"></script>
-    <script type="module">
+    
+    <script>
         // Initialize Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyBOEOxU866-jIoT0KIO-hBG3GbUaTEnsQg",
             authDomain: "fir-forums-54bdb.firebaseapp.com",
             projectId: "fir-forums-54bdb",
-            storageBucket: "fir-forums-54bdb.firebasestorage.app",
+            storageBucket: "fir-forums-54bdb.appspot.com",
             messagingSenderId: "159128608485",
             appId: "1:159128608485:web:b68c2b41f4ba97c28d3e0c",
             measurementId: "G-J50YZC2H2L"
         };
-
-        const app = firebase.initializeApp(firebaseConfig);
+    
+        firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
-        
-        // Function to update the displayed counters
-        function updateDisplayedCounters(metricsData) {
-            const userCount = document.getElementById('user-count');
-            const pageViews = document.getElementById('page-views');
-            
-            if (userCount) {
-                userCount.textContent = (metricsData.registeredUsers || 0).toLocaleString();
+    
+        // Auth state listener
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                const userRef = db.ref(`users/${user.uid}`);
+                userRef.set({
+                    email: user.email,
+                    createdAt: Date.now(),
+                    name: user.displayName || "",
+                    profilePic: user.photoURL || ""
+                });
             }
-            
-            if (pageViews) {
-                pageViews.textContent = (metricsData.pageViews || 0).toLocaleString();
-            }
+        });
+    
+        function updateUserCount() {
+            const userRef = db.ref('users');
+            userRef.get().then((snapshot) => {
+                if (snapshot.exists()) {
+                    const userCount = Object.keys(snapshot.val()).length;
+                    db.ref('metrics/registeredUsers').set(userCount);
+                }
+            });
         }
-
-        // Listen for changes in the metrics
+    
+        updateUserCount();
+    
+        document.addEventListener('DOMContentLoaded', () => {
+            const loginForm = document.getElementById('login-form');
+            const signupForm = document.getElementById('signup-form');
+    
+            async function handleGoogleSignIn() {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                try {
+                    const result = await auth.signInWithPopup(provider);
+                    const user = result.user;
+    
+                    const snapshot = await db.ref('users/' + user.uid).once('value');
+                    if (!snapshot.exists()) {
+                        await db.ref('users/' + user.uid).set({
+                            email: user.email,
+                            name: user.displayName,
+                            profilePic: user.photoURL,
+                            createdAt: firebase.database.ServerValue.TIMESTAMP
+                        });
+    
+                        await db.ref('metrics/registeredUsers').transaction(current => (current || 0) + 1);
+                    } else {
+                        await db.ref('users/' + user.uid).update({
+                            lastLogin: firebase.database.ServerValue.TIMESTAMP
+                        });
+                    }
+    
+                    if (loginForm) loginForm.style.display = 'none';
+                    if (signupForm) signupForm.style.display = 'none';
+    
+                } catch (error) {
+                    console.error("Error during Google sign in:", error);
+                    alert(error.message);
+                }
+            }
+    
+            const loginGoogleBtn = loginForm?.querySelector('.google-login-button');
+            const signupGoogleBtn = signupForm?.querySelector('.google-login-button');
+            if (loginGoogleBtn) loginGoogleBtn.addEventListener('click', handleGoogleSignIn);
+            if (signupGoogleBtn) signupGoogleBtn.addEventListener('click', handleGoogleSignIn);
+        });
+    
         db.ref('metrics').on('value', (snapshot) => {
             const metricsData = snapshot.val() || { pageViews: 0, registeredUsers: 0 };
-            updateDisplayedCounters(metricsData);
+            document.getElementById('user-count').textContent = metricsData.registeredUsers || 0;
+            document.getElementById('page-views').textContent = metricsData.pageViews || 0;
         });
-
-        // Function to generate a unique device ID
-        function generateDeviceId() {
-            const nav = window.navigator;
-            const screen = window.screen;
-            let deviceId = '';
-            
-            // Combine multiple browser-specific attributes
-            deviceId += nav.userAgent.replace(/\D+/g, '');
-            deviceId += screen.height || '';
-            deviceId += screen.width || '';
-            deviceId += screen.colorDepth || '';
-            
-            // Add timestamp for more uniqueness
-            deviceId += Date.now();
-            
-            // Hash the deviceId
-            return btoa(deviceId).replace(/[^a-zA-Z0-9]/g, '').substr(0, 32);
-        }
-
-        // Check if this is a new session
-        const deviceId = localStorage.getItem('deviceId') || generateDeviceId();
-        const lastVisit = localStorage.getItem('lastVisit');
-        const currentTime = Date.now();
-        const sessionTimeout = 30 * 60 * 1000; // 30 minutes
-
-        // Save device ID if it's new
-        if (!localStorage.getItem('deviceId')) {
-            localStorage.setItem('deviceId', deviceId);
-        }
-
-        // Check if this is a new session (first visit or last visit was more than 30 minutes ago)
-        if (!lastVisit || (currentTime - parseInt(lastVisit)) > sessionTimeout) {
-            // Update last visit time
-            localStorage.setItem('lastVisit', currentTime.toString());
-            
-            // Increment page views counter
-            db.ref('metrics/pageViews').transaction(currentValue => {
-                return (currentValue || 0) + 1;
-            }).catch(error => {
-                console.error("Error updating page views:", error);
-            });
-
-            // Record session
-            db.ref(`sessions/${deviceId}`).set({
-                timestamp: firebase.database.ServerValue.TIMESTAMP,
-                deviceId: deviceId
-            }).catch(error => {
-                console.error("Error saving session:", error);
-            });
-        }
-
-        // Clean up old sessions (run every hour)
-        setInterval(() => {
-            const yesterday = Date.now() - (24 * 60 * 60 * 1000);
-            db.ref('sessions').orderByChild('timestamp').endAt(yesterday)
-                .once('value')
-                .then(snapshot => {
-                    const updates = {};
-                    snapshot.forEach(child => {
-                        updates[child.key] = null;
-                    });
-                    if (Object.keys(updates).length > 0) {
-                        db.ref('sessions').update(updates);
-                    }
-                })
-                .catch(error => console.log('Session cleanup failed:', error));
-        }, 60 * 60 * 1000);
     </script>
+    
 </body>
 </html>
