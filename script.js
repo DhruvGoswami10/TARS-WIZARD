@@ -451,6 +451,17 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     postsRef.off();
     
     postsRef.on("value", async (snapshot) => {
+        // Update the post count first
+        const postCount = snapshot.numChildren();
+        const seeMoreBtn = document.querySelector(`[data-category="${category}"] .see-more`);
+        
+        // Only update if not expanded and if count has changed
+        if (seeMoreBtn && 
+            !seeMoreBtn.closest('.category').classList.contains('expanded') && 
+            !seeMoreBtn.textContent.includes(`(${postCount})`)) {
+          updateCategoryCount(category, postCount);
+        }
+        
         // Clear existing posts
         categoryPosts.innerHTML = "";
         
@@ -499,26 +510,22 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
 
   // Add "See all" button handlers
   document.querySelectorAll('.see-more').forEach(button => {
-    button.addEventListener('click', (e) => {
+    button.addEventListener('click', async (e) => {
       e.stopPropagation(); // Prevent category click event
       const category = button.closest('.category');
       category.classList.toggle('expanded');
+  
       if (category.classList.contains('expanded')) {
         loadCategoryPosts(category.dataset.category, false);
         button.textContent = 'Show less';
       } else {
+        const postCount = await getPostCount(category.dataset.category);
         loadCategoryPosts(category.dataset.category, true);
-        button.textContent = 'See all';
+        button.textContent = `See all (${postCount})`;
       }
     });
   });
-
-  // Load previews when page loads
-  document.addEventListener('DOMContentLoaded', () => {
-    const categories = ['updates', 'issues', 'discussions', 'suggestions'];
-    categories.forEach(category => loadCategoryPosts(category, true));
-  });
-
+  
   // Add these functions after Firebase initialization
   function updateNotificationCount(unreadCount) {
     const bell = document.getElementById('notification-bell');
@@ -992,4 +999,128 @@ document.head.insertAdjacentHTML('beforeend', `
       color: #0056b3;
     }
   </style>
-`)};
+`);
+}
+
+function updateCategoryCount(category, count) {
+  const seeMoreBtn = document.querySelector(`[data-category="${category}"] .see-more`);
+  if (seeMoreBtn) {
+    seeMoreBtn.textContent = `See all (${count})`;
+  }
+}
+
+// Modify the loadCategoryPosts function to update counts
+function loadCategoryPosts(category, isPreview = false) {
+  const postsRef = db.ref(`categories/${category}/threads`).orderByChild('timestamp');
+  const containerSelector = isPreview ? '.preview-posts' : '.category-posts';
+  const categoryPosts = document.querySelector(`[data-category="${category}"] ${containerSelector}`);
+  
+  if (!categoryPosts) {
+    console.error(`Container not found for category: ${category}`);
+    return;
+  }
+
+  // Remove any existing listeners
+  postsRef.off();
+  
+  postsRef.on("value", async (snapshot) => {
+    // Update the post count first
+    const postCount = snapshot.numChildren();
+    const seeMoreBtn = document.querySelector(`[data-category="${category}"] .see-more`);
+    
+    // Only update the text if the button is in "See all" mode (not expanded)
+    if (seeMoreBtn && !seeMoreBtn.closest('.category').classList.contains('expanded')) {
+      updateCategoryCount(category, postCount);
+    }
+    
+    // Clear existing posts
+    categoryPosts.innerHTML = "";
+    
+    if (!snapshot.exists()) {
+      categoryPosts.innerHTML = "<p>No posts yet in this category!</p>";
+      return;
+    }
+
+    // ...rest of existing loadCategoryPosts function...
+    const posts = [];
+    snapshot.forEach((thread) => {
+        posts.unshift({ key: thread.key, ...thread.val() });
+    });
+
+    const postsToShow = isPreview ? posts.slice(0, 2) : posts;
+    
+    // Use Promise.all to handle all posts at once
+    await Promise.all(postsToShow.map(async post => {
+        try {
+            const userSnapshot = await db.ref("users/" + post.userId).once("value");
+            const userData = userSnapshot.val();
+            const userEmail = userData?.email || "deleted user";
+            const postDiv = createPostElement(post, category, userEmail);
+            categoryPosts.appendChild(postDiv);
+        } catch (error) {
+            console.error("Error loading post:", error);
+        }
+    }));
+  });
+}
+
+// Add this helper function to get post count
+async function getPostCount(category) {
+  const countRef = firebase.database().ref(`categories/${category}/threads`);
+  const snapshot = await countRef.once('value');
+  return snapshot.numChildren();
+}
+
+// Add this new function to initialize post counts
+async function initializeCategoryCounts() {
+  const categories = ['updates', 'issues', 'discussions', 'suggestions'];
+  for (const category of categories) {
+    const count = await getPostCount(category);
+    updateCategoryCount(category, count);
+  }
+}
+
+// Update the DOMContentLoaded event listener
+document.addEventListener('DOMContentLoaded', () => {
+  const categories = ['updates', 'issues', 'discussions', 'suggestions'];
+  // Initialize the counts first
+  initializeCategoryCounts();
+  // Then load the previews
+  categories.forEach(category => loadCategoryPosts(category, true));
+  
+  // Debug logging
+  console.log('DOM loaded, checking categories...');
+  // ...rest of existing DOMContentLoaded code...
+});
+
+// Update loadCategoryPosts to avoid resetting the count to 0
+function loadCategoryPosts(category, isPreview = false) {
+  const postsRef = db.ref(`categories/${category}/threads`).orderByChild('timestamp');
+  const containerSelector = isPreview ? '.preview-posts' : '.category-posts';
+  const categoryPosts = document.querySelector(`[data-category="${category}"] ${containerSelector}`);
+  
+  if (!categoryPosts) {
+    console.error(`Container not found for category: ${category}`);
+    return;
+  }
+
+  // Remove any existing listeners
+  postsRef.off();
+  
+  postsRef.on("value", async (snapshot) => {
+    // Update the post count first
+    const postCount = snapshot.numChildren();
+    const seeMoreBtn = document.querySelector(`[data-category="${category}"] .see-more`);
+    
+    // Only update if not expanded and if count has changed
+    if (seeMoreBtn && 
+        !seeMoreBtn.closest('.category').classList.contains('expanded') && 
+        !seeMoreBtn.textContent.includes(`(${postCount})`)) {
+      updateCategoryCount(category, postCount);
+    }
+    
+    // ...rest of existing code...
+  });
+}
+
+// ...rest of existing code...
