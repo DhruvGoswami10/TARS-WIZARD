@@ -405,15 +405,29 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     if (content.trim() !== '<p><br></p>') {
       const user = auth.currentUser;
       if (user) {
-        db.ref(`categories/${category}/threads`).push({
+        // Disable the button while posting
+        postBtn.disabled = true;
+        
+        // Remove existing listener for this category before adding the post
+        const postsRef = db.ref(`categories/${category}/threads`);
+        postsRef.off();
+
+        postsRef.push({
           content: content,
           userId: user.uid,
           timestamp: firebase.database.ServerValue.TIMESTAMP
         }).then(() => {
           postQuill.setText('');
           newPostModal.style.display = "none";
+          // Re-enable the button after successful post
+          postBtn.disabled = false;
+          
+          // Refresh the page after successful post
+          window.location.reload();
         }).catch((error) => {
           console.error("Error adding post:", error);
+          // Re-enable the button if there's an error
+          postBtn.disabled = false;
         });
       }
     } else {
@@ -447,50 +461,55 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
       return;
     }
   
-    // Remove any existing listeners
-    postsRef.off();
+    // Clean up existing listeners
+    postsRef.off('value');
     
-    postsRef.on("value", async (snapshot) => {
-        // Update the post count first
-        const postCount = snapshot.numChildren();
-        const seeMoreBtn = document.querySelector(`[data-category="${category}"] .see-more`);
-        
-        // Only update if not expanded and if count has changed
-        if (seeMoreBtn && 
-            !seeMoreBtn.closest('.category').classList.contains('expanded') && 
-            !seeMoreBtn.textContent.includes(`(${postCount})`)) {
-          updateCategoryCount(category, postCount);
+    // Clear existing posts
+    categoryPosts.innerHTML = "";
+    
+    // Create a single listener
+    const listener = postsRef.on("value", async (snapshot) => {
+      const postCount = snapshot.numChildren();
+      const seeMoreBtn = document.querySelector(`[data-category="${category}"] .see-more`);
+      
+      if (seeMoreBtn && !seeMoreBtn.closest('.category').classList.contains('expanded')) {
+        updateCategoryCount(category, postCount);
+      }
+      
+      categoryPosts.innerHTML = "";
+      
+      if (!snapshot.exists()) {
+        categoryPosts.innerHTML = "<p>No posts yet in this category!</p>";
+        return;
+      }
+  
+      const posts = [];
+      snapshot.forEach((thread) => {
+        posts.unshift({ key: thread.key, ...thread.val() });
+      });
+  
+      // Sort posts by timestamp in descending order (newest first)
+      posts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  
+      // When in preview mode, show only the 2 most recent posts
+      const postsToShow = isPreview ? posts.slice(0, 2) : posts;
+      const fragment = document.createDocumentFragment();
+      
+      await Promise.all(postsToShow.map(async post => {
+        try {
+          const userSnapshot = await db.ref("users/" + post.userId).once("value");
+          const userData = userSnapshot.val();
+          const userEmail = userData?.email || "deleted user";
+          const postDiv = createPostElement(post, category, userEmail);
+          fragment.appendChild(postDiv);
+        } catch (error) {
+          console.error("Error loading post:", error);
         }
-        
-        // Clear existing posts
-        categoryPosts.innerHTML = "";
-        
-        if (!snapshot.exists()) {
-            categoryPosts.innerHTML = "<p>No posts yet in this category!</p>";
-            return;
-        }
-
-        const posts = [];
-        snapshot.forEach((thread) => {
-            posts.unshift({ key: thread.key, ...thread.val() });
-        });
-
-        const postsToShow = isPreview ? posts.slice(0, 2) : posts;
-        
-        // Use Promise.all to handle all posts at once
-        await Promise.all(postsToShow.map(async post => {
-            try {
-                const userSnapshot = await db.ref("users/" + post.userId).once("value");
-                const userData = userSnapshot.val();
-                const userEmail = userData?.email || "deleted user";
-                const postDiv = createPostElement(post, category, userEmail);
-                categoryPosts.appendChild(postDiv);
-            } catch (error) {
-                console.error("Error loading post:", error);
-            }
-        }));
+      }));
+  
+      categoryPosts.appendChild(fragment);
     });
-}
+  }
 
   // Add function to load all category previews
   function loadAllCategoryPreviews() {
@@ -1028,90 +1047,6 @@ function loadCategoryPosts(category, isPreview = false) {
     const postCount = snapshot.numChildren();
     const seeMoreBtn = document.querySelector(`[data-category="${category}"] .see-more`);
     
-    // Only update the text if the button is in "See all" mode (not expanded)
-    if (seeMoreBtn && !seeMoreBtn.closest('.category').classList.contains('expanded')) {
-      updateCategoryCount(category, postCount);
-    }
-    
-    // Clear existing posts
-    categoryPosts.innerHTML = "";
-    
-    if (!snapshot.exists()) {
-      categoryPosts.innerHTML = "<p>No posts yet in this category!</p>";
-      return;
-    }
-
-    // ...rest of existing loadCategoryPosts function...
-    const posts = [];
-    snapshot.forEach((thread) => {
-        posts.unshift({ key: thread.key, ...thread.val() });
-    });
-
-    const postsToShow = isPreview ? posts.slice(0, 2) : posts;
-    
-    // Use Promise.all to handle all posts at once
-    await Promise.all(postsToShow.map(async post => {
-        try {
-            const userSnapshot = await db.ref("users/" + post.userId).once("value");
-            const userData = userSnapshot.val();
-            const userEmail = userData?.email || "deleted user";
-            const postDiv = createPostElement(post, category, userEmail);
-            categoryPosts.appendChild(postDiv);
-        } catch (error) {
-            console.error("Error loading post:", error);
-        }
-    }));
-  });
-}
-
-// Add this helper function to get post count
-async function getPostCount(category) {
-  const countRef = firebase.database().ref(`categories/${category}/threads`);
-  const snapshot = await countRef.once('value');
-  return snapshot.numChildren();
-}
-
-// Add this new function to initialize post counts
-async function initializeCategoryCounts() {
-  const categories = ['updates', 'issues', 'discussions', 'suggestions'];
-  for (const category of categories) {
-    const count = await getPostCount(category);
-    updateCategoryCount(category, count);
-  }
-}
-
-// Update the DOMContentLoaded event listener
-document.addEventListener('DOMContentLoaded', () => {
-  const categories = ['updates', 'issues', 'discussions', 'suggestions'];
-  // Initialize the counts first
-  initializeCategoryCounts();
-  // Then load the previews
-  categories.forEach(category => loadCategoryPosts(category, true));
-  
-  // Debug logging
-  console.log('DOM loaded, checking categories...');
-  // ...rest of existing DOMContentLoaded code...
-});
-
-// Update loadCategoryPosts to avoid resetting the count to 0
-function loadCategoryPosts(category, isPreview = false) {
-  const postsRef = db.ref(`categories/${category}/threads`).orderByChild('timestamp');
-  const containerSelector = isPreview ? '.preview-posts' : '.category-posts';
-  const categoryPosts = document.querySelector(`[data-category="${category}"] ${containerSelector}`);
-  
-  if (!categoryPosts) {
-    console.error(`Container not found for category: ${category}`);
-    return;
-  }
-
-  // Remove any existing listeners
-  postsRef.off();
-  
-  postsRef.on("value", async (snapshot) => {
-    // Update the post count first
-    const postCount = snapshot.numChildren();
-    const seeMoreBtn = document.querySelector(`[data-category="${category}"] .see-more`);
-    
     // Only update if not expanded and if count has changed
     if (seeMoreBtn && 
         !seeMoreBtn.closest('.category').classList.contains('expanded') && 
@@ -1124,3 +1059,148 @@ function loadCategoryPosts(category, isPreview = false) {
 }
 
 // ...rest of existing code...
+
+// Modify the post button click handler
+postBtn.addEventListener("click", () => {
+  const content = postQuill.root.innerHTML;
+  const category = document.getElementById("category-select").value;
+  
+  if (content.trim() !== '<p><br></p>') {
+    const user = auth.currentUser;
+    if (user) {
+      postBtn.disabled = true;
+      
+      db.ref(`categories/${category}/threads`).push({
+        content: content,
+        userId: user.uid,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+      }).then(() => {
+        postQuill.setText('');
+        newPostModal.style.display = "none";
+        postBtn.disabled = false;
+        
+        // Refresh the page after successful post
+        window.location.reload();
+      }).catch((error) => {
+        console.error("Error adding post:", error);
+        postBtn.disabled = false;
+      });
+    }
+  } else {
+    alert("Post cannot be empty!");
+  }
+});
+
+// Modify the "See all" button handlers
+document.querySelectorAll('.see-more').forEach(button => {
+  button.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const category = button.closest('.category');
+    const isExpanded = category.classList.contains('expanded');
+    
+    if (isExpanded) {
+      // Going back to preview mode
+      category.classList.remove('expanded');
+      const count = await getPostCount(category.dataset.category);
+      button.textContent = `See all (${count})`;
+      loadCategoryPosts(category.dataset.category, true);
+    } else {
+      // Expanding to show all posts
+      category.classList.add('expanded');
+      button.textContent = 'Show less';
+      loadCategoryPosts(category.dataset.category, false);
+    }
+  });
+});
+
+// Update loadCategoryPosts to properly handle preview mode
+function loadCategoryPosts(category, isPreview = false) {
+  const postsRef = db.ref(`categories/${category}/threads`).orderByChild('timestamp');
+  const containerSelector = isPreview ? '.preview-posts' : '.category-posts';
+  const categoryPosts = document.querySelector(`[data-category="${category}"] ${containerSelector}`);
+  
+  if (!categoryPosts) return;
+
+  // Remove existing listeners
+  postsRef.off('value');
+  
+  // Clear existing posts
+  categoryPosts.innerHTML = "";
+  
+  postsRef.on("value", async (snapshot) => {
+    const posts = [];
+    snapshot.forEach((thread) => {
+      posts.unshift({ key: thread.key, ...thread.val() });
+    });
+
+    // Sort posts by timestamp in descending order
+    posts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    
+    // Update post count if in preview mode
+    if (isPreview) {
+      const seeMoreBtn = document.querySelector(`[data-category="${category}"] .see-more`);
+      if (seeMoreBtn && !seeMoreBtn.textContent.includes('Show less')) {
+        updateCategoryCount(category, posts.length);
+      }
+    }
+
+    // Show all posts or just the preview
+    const postsToShow = isPreview ? posts.slice(0, 2) : posts;
+    const fragment = document.createDocumentFragment();
+
+    await Promise.all(postsToShow.map(async post => {
+      try {
+        const userSnapshot = await db.ref("users/" + post.userId).once("value");
+        const userData = userSnapshot.val();
+        const userEmail = userData?.email || "deleted user";
+        const postDiv = createPostElement(post, category, userEmail);
+        fragment.appendChild(postDiv);
+      } catch (error) {
+        console.error("Error loading post:", error);
+      }
+    }));
+
+    categoryPosts.appendChild(fragment);
+  });
+}
+
+// ...existing code...
+
+// Add this function near the top with other utility functions
+async function getPostCount(category) {
+  try {
+    const snapshot = await db.ref(`categories/${category}/threads`).once('value');
+    return snapshot.numChildren();
+  } catch (error) {
+    console.error('Error getting post count:', error);
+    return 0;
+  }
+}
+
+// Update the "See all" button handlers
+document.querySelectorAll('.see-more').forEach(button => {
+  button.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const category = button.closest('.category');
+    const isExpanded = category.classList.contains('expanded');
+    
+    if (isExpanded) {
+      // Going back to preview mode
+      category.classList.remove('expanded');
+      try {
+        const count = await getPostCount(category.dataset.category);
+        button.textContent = `See all (${count})`;
+        loadCategoryPosts(category.dataset.category, true);
+      } catch (error) {
+        console.error('Error updating post count:', error);
+      }
+    } else {
+      // Expanding to show all posts
+      category.classList.add('expanded');
+      button.textContent = 'Show less';
+      loadCategoryPosts(category.dataset.category, false);
+    }
+  });
+});
+
+// ...existing code...
