@@ -2113,3 +2113,21 @@ body {
 #post-details .login-prompt .inline-login-btn:hover {
     text-decoration: underline;
 }
+
+.reply-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #666;
+  font-size: 0.9em;
+  margin-left: 16px;
+}
+
+.reply-count svg {
+  opacity: 0.7;
+}
+
+.post-meta {
+  display: flex;
+  align-items: center;
+}
