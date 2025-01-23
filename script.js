@@ -719,15 +719,30 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     postDiv.innerHTML = `
       <div class="post-content">${post.content}</div>
       <div class="post-footer">
-        <div class="post-actions">
-          ${isAuthenticated ? upvoteBtn.outerHTML : ''}
+        <div class="post-meta">
           <span class="post-author">Posted by ${userEmail}</span>
+          <span class="reply-count">
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+            </svg>
+            <span class="count">0</span> replies
+          </span>
         </div>
         <div class="post-actions">
-          ${deleteButton}
+          ${isAuthenticated ? upvoteBtn.outerHTML : ''}
+          ${isAuthor ? deleteButton : ''}
         </div>
       </div>
     `;
+  
+    // Get real-time reply count updates
+    db.ref(`categories/${category}/threads/${post.key}/replies`).on('value', (snapshot) => {
+      const replyCount = snapshot.numChildren() || 0;
+      const countElement = postDiv.querySelector('.reply-count .count');
+      if (countElement) {
+        countElement.textContent = replyCount;
+      }
+    });
   
     // Handle delete button click
     if (deleteButton) {
@@ -789,6 +804,24 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
       openPost(category, post.key, post, userEmail);
     });
     
+    // Get reply count before creating post element
+    db.ref(`categories/${category}/threads/${post.key}/replies`).once('value', (snapshot) => {
+      const replyCount = snapshot.numChildren();
+      const countElement = postDiv.querySelector('.reply-count .count');
+      if (countElement) {
+        countElement.textContent = replyCount;
+      }
+    });
+
+    // Add listener for reply count updates
+    db.ref(`categories/${category}/threads/${post.key}/replies`).on('value', (snapshot) => {
+      const replyCount = snapshot.numChildren();
+      const countElement = postDiv.querySelector('.reply-count .count');
+      if (countElement) {
+        countElement.textContent = replyCount;
+      }
+    });
+
     return postDiv;
   }
   
@@ -1204,3 +1237,53 @@ document.querySelectorAll('.see-more').forEach(button => {
 });
 
 // ...existing code...
+
+function createPostElement(post, category, userEmail) {
+  const postDiv = document.createElement("div");
+  postDiv.classList.add("post");
+  
+  // Get reply count before creating post element
+  db.ref(`categories/${category}/threads/${post.key}/replies`).on('value', (snapshot) => {
+    const replyCount = snapshot.numChildren() || 0;
+    const metaDiv = postDiv.querySelector('.post-meta');
+    if (metaDiv) {
+      const replyText = metaDiv.querySelector('.reply-text');
+      replyText.textContent = `${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
+    }
+  });
+
+  const isAuthenticated = auth.currentUser;
+  const isAuthor = isAuthenticated && auth.currentUser.uid === post.userId;
+  
+  postDiv.innerHTML = `
+    <div class="post-content">${post.content}</div>
+    <div class="post-footer">
+      <div class="post-meta">
+        <span class="post-author">Posted by ${userEmail}</span>
+        <span class="reply-count">
+          <svg viewBox="0 0 24 24" width="16" height="16">
+            <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+          </svg>
+          <span class="count">0</span> replies
+        </span>
+      </div>
+      <div class="post-actions">
+        ${isAuthenticated ? createUpvoteButton(post.key, category, 'post', post.upvoteCount || 0).outerHTML : ''}
+        ${isAuthor ? deleteButton : ''}
+      </div>
+    </div>
+  `;
+
+  // Get real-time reply count updates
+  db.ref(`categories/${category}/threads/${post.key}/replies`).on('value', (snapshot) => {
+    const replyCount = snapshot.numChildren() || 0;
+    const countElement = postDiv.querySelector('.reply-count .count');
+    if (countElement) {
+      countElement.textContent = replyCount;
+    }
+  });
+
+  // ...rest of the existing function code...
+
+  return postDiv;
+}
