@@ -264,9 +264,22 @@
       loginForm.style.display = 'flex';
     });
 
-    // Update Google sign-in click handlers to use the global function
-    loginGoogleBtn.addEventListener('click', () => window.handleGoogleSignIn());
-    signupGoogleBtn.addEventListener('click', () => window.handleGoogleSignIn());
+    // Add click handlers for Google sign-in using the global function
+    loginGoogleBtn?.addEventListener('click', () => {
+      if (typeof window.handleGoogleSignIn === 'function') {
+        window.handleGoogleSignIn();
+      } else {
+        console.error('Google Sign In handler not initialized');
+      }
+    });
+
+    signupGoogleBtn?.addEventListener('click', () => {
+      if (typeof window.handleGoogleSignIn === 'function') {
+        window.handleGoogleSignIn();
+      } else {
+        console.error('Google Sign In handler not initialized');
+      }
+    });
   </script>
 
   <script>
