@@ -1083,7 +1083,16 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     function displayReplyContent(displayName) {
       const deleteButton = auth.currentUser && 
         (auth.currentUser.uid === reply.userId || auth.currentUser.email === reply.user)
-          ? `<button class="delete-reply-btn"><!-- ...existing delete button SVG... --></button>` 
+          ? `<button class="delete-reply-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 69 14" class="svgIcon bin-top">
+                <g clip-path="url(#clip0_35_24)">
+                  <path fill="white" d="M20.8232 2.62734L19.9948 4.21304C19.8224 4.54309 19.4808 4.75 19.1085 4.75H4.92857C2.20246 4.75 0 6.87266 0 9.5C0 12.1273 2.20246 14.25 4.92857 14.25H64.0714C66.7975 14.25 69 12.1273 69 9.5C69 6.87266 66.7975 4.75 64.0714 4.75H49.8915C49.5192 4.75 49.1776 4.54309 49.0052 4.21305L48.1768 2.62734Z"></path>
+                </g>
+              </svg>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 69 57" class="svgIcon bin-bottom">
+                <path fill="white" d="M63.9723 3.04906C64.0092 3.62279 63.551 4.11106 62.9723 4.11106H6.02772C5.44905 4.11106 4.99084 3.62279 5.02772 3.04906L8.27772 53.8615C8.52772 57.6615 11.8277 60.6111 15.7777 60.6111H53.2223C57.1723 60.6111 60.4723 57.6615 60.7223 53.8615L63.9723 3.04906Z"></path>
+              </svg>
+            </button>` 
           : '';
   
       replyDiv.innerHTML = `
