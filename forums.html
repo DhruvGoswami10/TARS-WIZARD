@@ -215,6 +215,16 @@
       </div>
     </div>
 
+    <!-- Add this new modal after the other modals and before main content -->
+    <div id="username-modal" class="modal">
+      <div class="modal-content">
+        <h2>Choose a Username</h2>
+        <p>Please enter a username to continue:</p>
+        <input type="text" id="username-input" class="input" placeholder="Username">
+        <button id="save-username-btn" class="form-btn">Save Username</button>
+      </div>
+    </div>
+
     <section id="posts">
       <!-- Posts will be dynamically loaded here -->
       <button class="delete-post-btn" style="display:none;">Delete</button>
@@ -244,6 +254,7 @@
     // Get the form elements
     const loginForm = document.getElementById('login-form');
     const signupForm = document.getElementById('signup-form');
+    const usernameModal = document.getElementById('username-modal');
 
     // Get the switch links
     const toSignupLink = loginForm.querySelector('.sign-up-link');
@@ -269,17 +280,8 @@
       const provider = new firebase.auth.GoogleAuthProvider();
       firebase.auth().signInWithPopup(provider)
         .then((result) => {
-          // Save user data to database
           const user = result.user;
-          firebase.database().ref('users/' + user.uid).set({
-            email: user.email,
-            name: user.displayName,
-            profilePic: user.photoURL
-          });
-          
-          // Close the forms
-          loginForm.style.display = 'none';
-          signupForm.style.display = 'none';
+          checkUsername(user);
         })
         .catch((error) => {
           console.error("Error during Google sign in:", error);
@@ -287,9 +289,145 @@
         });
     }
 
-    // Add click handlers for Google sign-in
-    loginGoogleBtn.addEventListener('click', handleGoogleSignIn);
-    signupGoogleBtn.addEventListener('click', handleGoogleSignIn);
+    // Add username checking and saving functions
+    function checkUsername(user) {
+      firebase.database().ref('users/' + user.uid).once('value')
+        .then((snapshot) => {
+          const userData = snapshot.val();
+          if (!userData || !userData.username) {
+            showUsernamePrompt(user);
+          } else {
+            // Close auth modals
+            loginForm.style.display = 'none';
+            signupForm.style.display = 'none';
+          }
+        });
+    }
+
+    function showUsernamePrompt(user) {
+      usernameModal.style.display = 'block';
+      
+      document.getElementById('save-username-btn').onclick = () => {
+        const username = document.getElementById('username-input').value.trim();
+        
+        if (username) {
+          // Check if username already exists
+          firebase.database().ref('usernames').child(username).once('value')
+            .then((snapshot) => {
+              if (snapshot.exists()) {
+                alert('Username already taken. Please choose another.');
+              } else {
+                // Save username
+                const updates = {};
+                updates[`users/${user.uid}/username`] = username;
+                updates[`usernames/${username}`] = user.uid;
+                
+                firebase.database().ref().update(updates)
+                  .then(() => {
+                    usernameModal.style.display = 'none';
+                    loginForm.style.display = 'none';
+                    signupForm.style.display = 'none';
+                  })
+                  .catch(error => {
+                    console.error('Error saving username:', error);
+                    alert('Error saving username. Please try again.');
+                  });
+              }
+            });
+        } else {
+          alert('Please enter a valid username');
+        }
+      };
+    }
+
+    // Modify auth state change listener
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        checkUsername(user);
+        // ...rest of existing auth state change code...
+      }
+      // ...existing else block...
+    });
+
+    // Modify the signup submit handler
+    document.getElementById("signup-submit").addEventListener("click", () => {
+      const email = document.getElementById("signup-email").value;
+      const password = document.getElementById("signup-password").value;
+      const username = document.getElementById("signup-name").value.trim();
+
+      if (!username) {
+        alert('Please enter a username');
+        return;
+      }
+
+      // Check if username exists first
+      firebase.database().ref('usernames').child(username).once('value')
+        .then((snapshot) => {
+          if (snapshot.exists()) {
+            alert('Username already taken. Please choose another.');
+            return;
+          }
+
+          // Proceed with signup
+          auth.createUserWithEmailAndPassword(email, password)
+            .then((userCredential) => {
+              const user = userCredential.user;
+              const updates = {};
+              updates[`users/${user.uid}/username`] = username;
+              updates[`users/${user.uid}/email`] = email;
+              updates[`usernames/${username}`] = user.uid;
+
+              return firebase.database().ref().update(updates);
+            })
+            .then(() => {
+              document.getElementById("signup-form").style.display = "none";
+            })
+            .catch((error) => alert(error.message));
+        });
+    });
+
+    // Modify login submit handler
+    document.getElementById("login-submit").addEventListener("click", () => {
+      const email = document.getElementById("login-email").value;
+      const password = document.getElementById("login-password").value;
+
+      auth.signInWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+          const user = userCredential.user;
+          checkUsername(user);
+        })
+        .catch((error) => alert(error.message));
+    });
+
+    // Add function to get username for posts
+    async function getUserDisplayName(userId) {
+      const snapshot = await firebase.database().ref(`users/${userId}`).once('value');
+      const userData = snapshot.val();
+      return userData?.username || userData?.email || 'Unknown User';
+    }
+
+    // Modify createPostElement to use username
+    function createPostElement(post, category, userEmail) {
+      const postDiv = document.createElement("div");
+      postDiv.classList.add("post");
+      
+      // Get username before creating post content
+      getUserDisplayName(post.userId).then(displayName => {
+        // ...existing post creation code...
+        postDiv.innerHTML = `
+          <div class="post-content">${post.content}</div>
+          <div class="post-footer">
+            <div class="post-meta">
+              <span class="post-author">Posted by ${displayName}</span>
+              <!-- ...rest of post footer... -->
+            </div>
+          </div>
+        `;
+        // ...rest of event handlers...
+      });
+
+      return postDiv;
+    }
   </script>
 
   <script>
