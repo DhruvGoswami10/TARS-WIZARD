@@ -192,6 +192,12 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
       const username = document.getElementById('username-input').value.trim();
       
       if (username) {
+        // Check for invalid characters
+        if (/[.#$\[\]]/.test(username)) {
+          alert('Username cannot contain the following characters: . # $ [ ]');
+          return;
+        }
+
         if (username.length < 3 || username.length > 30) {
           alert('Username must be between 3 and 30 characters');
           return;
