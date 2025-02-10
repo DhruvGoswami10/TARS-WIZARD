@@ -463,26 +463,19 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     const content = replyQuill.root.innerHTML;
     if (content.trim() !== '<p><br></p>') {
       const user = auth.currentUser;
-      // Check for mentions
-      const mentionRegex = /@([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/g;
-      const mentions = content.match(mentionRegex);
       
-      if (mentions) {
-        mentions.forEach(mention => {
-          const mentionedEmail = mention.substring(1);
-          // Find user by email and add notification
-          db.ref('users').orderByChild('email').equalTo(mentionedEmail).once('value', snapshot => {
-            snapshot.forEach(userSnapshot => {
-              addNotification(userSnapshot.key, `${user.email} mentioned you in a reply`);
-            });
-          });
-        });
-      }
+      // Store userId instead of email
       db.ref(`categories/${currentCategory}/threads/${currentPostId}/replies`).push({
         content: content,
-        user: user.email
+        userId: user.uid,  // Changed from user.email to user.uid
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+        user: user.email // Keep this for backward compatibility
+      }).then(() => {
+        replyQuill.setText('');
+      }).catch(error => {
+        console.error("Error adding reply:", error);
+        alert("Error posting reply");
       });
-      replyQuill.setText('');
     } else {
       alert("Reply cannot be empty!");
     }
@@ -1041,43 +1034,74 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     const replyDiv = document.createElement("div");
     replyDiv.classList.add("reply");
     
-    const deleteButton = auth.currentUser && auth.currentUser.email === reply.user 
-      ? `<button class="delete-reply-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 69 14" class="svgIcon bin-top">
-            <g clip-path="url(#clip0_35_24)">
-              <path fill="white" d="M20.8232 2.62734L19.9948 4.21304C19.8224 4.54309 19.4808 4.75 19.1085 4.75H4.92857C2.20246 4.75 0 6.87266 0 9.5C0 12.1273 2.20246 14.25 4.92857 14.25H64.0714C66.7975 14.25 69 12.1273 69 9.5C69 6.87266 66.7975 4.75 64.0714 4.75H49.8915C49.5192 4.75 49.1776 4.54309 49.0052 4.21305L48.1768 2.62734Z"></path>
-            </g>
-          </svg>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 69 57" class="svgIcon bin-bottom">
-            <path fill="white" d="M63.9723 3.04906C64.0092 3.62279 63.551 4.11106 62.9723 4.11106H6.02772C5.44905 4.11106 4.99084 3.62279 5.02772 3.04906L8.27772 53.8615C8.52772 57.6615 11.8277 60.6111 15.7777 60.6111H53.2223C57.1723 60.6111 60.4723 57.6615 60.7223 53.8615L63.9723 3.04906Z"></path>
-          </svg>
-        </button>` 
-      : '';
+    // First, check if the userId property exists in the reply
+    const userId = reply.userId;
+    if (!userId) {
+      // For legacy replies that only have user email
+      firebase.database().ref('users').orderByChild('email').equalTo(reply.user).once('value')
+        .then(snapshot => {
+          let foundUserId = null;
+          snapshot.forEach(child => {
+            foundUserId = child.key;
+          });
+          if (foundUserId) {
+            return firebase.database().ref(`users/${foundUserId}`).once('value');
+          }
+          throw new Error('User not found');
+        })
+        .then(userSnapshot => {
+          const userData = userSnapshot.val();
+          displayReplyContent(userData?.username || reply.user);
+        })
+        .catch(error => {
+          console.error("Error getting username:", error);
+          displayReplyContent(reply.user || "Unknown User");
+        });
+    } else {
+      // For new replies that have userId
+      firebase.database().ref(`users/${userId}`).once('value')
+        .then(snapshot => {
+          const userData = snapshot.val();
+          displayReplyContent(userData?.username || userData?.email || "Unknown User");
+        })
+        .catch(error => {
+          console.error("Error getting username:", error);
+          displayReplyContent("Unknown User");
+        });
+    }
   
-    replyDiv.innerHTML = `
-      <div class="reply-content">${reply.content}</div>
-      <div class="reply-footer">
-        <div class="reply-actions">
-          <span class="reply-author">Replied by ${reply.user}</span>
+    function displayReplyContent(displayName) {
+      const deleteButton = auth.currentUser && 
+        (auth.currentUser.uid === reply.userId || auth.currentUser.email === reply.user)
+          ? `<button class="delete-reply-btn"><!-- ...existing delete button SVG... --></button>` 
+          : '';
+  
+      replyDiv.innerHTML = `
+        <div class="reply-content">${reply.content}</div>
+        <div class="reply-footer">
+          <div class="reply-actions">
+            <span class="reply-author">Replied by ${displayName}</span>
+          </div>
+          <div class="reply-actions">
+            ${deleteButton}
+          </div>
         </div>
-        <div class="reply-actions">
-          ${deleteButton}
-        </div>
-      </div>
-    `;
+      `;
   
-    const upvoteBtn = createUpvoteButton(replyKey, category, 'reply', reply.upvoteCount || 0, postId);
-    replyDiv.querySelector('.reply-actions').prepend(upvoteBtn);
+      // Add upvote button and handlers
+      const upvoteBtn = createUpvoteButton(replyKey, category, 'reply', reply.upvoteCount || 0, postId);
+      replyDiv.querySelector('.reply-actions').prepend(upvoteBtn);
   
-    if (deleteButton) {
-      replyDiv.querySelector(".delete-reply-btn").addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (confirm("Are you sure you want to delete this reply?")) {
-          db.ref(`categories/${category}/threads/${postId}/replies/${replyKey}`).remove()
-            .then(() => console.log("Reply deleted successfully"))
-            .catch((error) => console.error("Error deleting reply:", error));
-        }
-      });
+      if (deleteButton) {
+        replyDiv.querySelector(".delete-reply-btn").addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (confirm("Are you sure you want to delete this reply?")) {
+            firebase.database().ref(`categories/${category}/threads/${postId}/replies/${replyKey}`).remove()
+              .then(() => console.log("Reply deleted successfully"))
+              .catch((error) => console.error("Error deleting reply:", error));
+          }
+        });
+      }
     }
   
     return replyDiv;
