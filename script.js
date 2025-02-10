@@ -1604,3 +1604,157 @@ function createPostElement(post, category, userEmail) {
 
   return postDiv;
 }
+
+// Update the Google Sign In handler
+function handleGoogleSignIn() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider)
+    .then(async (result) => {
+      const user = result.user;
+      
+      try {
+        // First check if this email already has a username
+        const emailSnapshot = await db.ref('users').orderByChild('email').equalTo(user.email).once('value');
+        let existingUsername = null;
+        
+        // Check if any account with this email has a username
+        emailSnapshot.forEach((childSnapshot) => {
+          const userData = childSnapshot.val();
+          if (userData.username) {
+            existingUsername = userData.username;
+            return true;
+          }
+        });
+
+        if (existingUsername) {
+          // Update current user's data with existing username
+          await db.ref(`users/${user.uid}`).update({
+            email: user.email,
+            username: existingUsername,
+            photoURL: user.photoURL || null,
+            lastLogin: firebase.database.ServerValue.TIMESTAMP
+          });
+        } else {
+          // Check if user already has data
+          const userSnapshot = await db.ref(`users/${user.uid}`).once('value');
+          const userData = userSnapshot.val();
+          
+          if (!userData?.username) {
+            showUsernamePrompt(user);
+          }
+        }
+      } catch (error) {
+        console.error("Error during Google sign in data check:", error);
+      }
+    })
+    .catch((error) => {
+      console.error("Error during Google sign in:", error);
+      alert(error.message);
+    });
+}
+
+// Update the auth state change handler
+auth.onAuthStateChanged((user) => {
+  const userEmailElement = document.getElementById("user-email");
+  const notificationBell = document.getElementById("notification-bell");
+  const createPostBtn = document.getElementById("create-post-btn");
+  
+  if (user) {
+    // First check if user has username in their own data
+    db.ref(`users/${user.uid}`).once('value')
+      .then((snapshot) => {
+        const userData = snapshot.val();
+        if (userData?.username) {
+          // User already has username in their own data
+          if (userEmailElement) {
+            userEmailElement.textContent = userData.username;
+          }
+          document.getElementById("login-form").style.display = "none";
+          document.getElementById("signup-form").style.display = "none";
+          return Promise.reject('USERNAME_EXISTS'); // Skip the email check
+        }
+        
+        // No username in user's data, check if email has username
+        return db.ref('users').orderByChild('email').equalTo(user.email).once('value');
+      })
+      .then((snapshot) => {
+        let existingUsername = null;
+        
+        snapshot.forEach((childSnapshot) => {
+          const userData = childSnapshot.val();
+          if (userData.username) {
+            existingUsername = userData.username;
+            return true;
+          }
+        });
+
+        if (existingUsername) {
+          // Found username associated with this email, save it to user's data
+          return db.ref(`users/${user.uid}`).update({
+            username: existingUsername,
+            email: user.email,
+            lastLogin: firebase.database.ServerValue.TIMESTAMP
+          }).then(() => {
+            if (userEmailElement) {
+              userEmailElement.textContent = existingUsername;
+            }
+            document.getElementById("login-form").style.display = "none";
+            document.getElementById("signup-form").style.display = "none";
+          });
+        } else {
+          // No username found anywhere, show prompt only if not shown before
+          const loginPrompt = document.querySelector('.login-prompt');
+          if (!loginPrompt) {
+            showUsernamePrompt(user);
+          }
+        }
+      })
+      .catch(error => {
+        if (error === 'USERNAME_EXISTS') {
+          return; // Username exists, nothing more to do
+        }
+        console.error("Error checking username:", error);
+      });
+
+    // Update rest of UI
+    logoutBtn.style.display = "inline-block";
+    loginBtn.style.display = "none";
+    signupBtn.style.display = "none";
+    userEmailElement.style.display = "inline-block";
+    notificationBell.style.display = "flex";
+    loadNotifications();
+    createPostBtn.style.display = "block";
+  } else {
+    // ...existing logout state code...
+  }
+  
+  // ...rest of existing code...
+});
+
+// Update the showUsernamePrompt function
+function showUsernamePrompt(user) {
+  const usernameModal = document.getElementById('username-modal');
+  if (!usernameModal) return;
+  
+  // Check if already has username before showing prompt
+  db.ref(`users/${user.uid}`).once('value')
+    .then((snapshot) => {
+      const userData = snapshot.val();
+      if (userData?.username) {
+        return; // Already has username, don't show prompt
+      }
+      
+      usernameModal.style.display = 'block';
+      
+      document.getElementById('save-username-btn').onclick = () => {
+        const username = document.getElementById('username-input').value.trim();
+        
+        if (username) {
+          // Rest of the username saving logic...
+          // ...existing username validation and saving code...
+        }
+      };
+    });
+}
+
+// ...rest of existing code...
