@@ -276,50 +276,62 @@
   
   <!-- Replace the Google Sign In script section -->
   <script>
-    // Get the form elements
-    const loginForm = document.getElementById('login-form');
-    const signupForm = document.getElementById('signup-form');
-    const loginGoogleBtn = loginForm.querySelector('.google-login-button');
-    const signupGoogleBtn = signupForm.querySelector('.google-login-button');
-    const toSignupLink = loginForm.querySelector('.sign-up-link');
-    const toLoginLink = signupForm.querySelector('.sign-up-link');
+    document.addEventListener('DOMContentLoaded', function() {
+      // Get form elements
+      const loginForm = document.getElementById('login-form');
+      const signupForm = document.getElementById('signup-form');
+      const loginGoogleBtn = loginForm?.querySelector('.google-login-button');
+      const signupGoogleBtn = signupForm?.querySelector('.google-login-button');
 
-    // Form switching logic
-    toSignupLink.addEventListener('click', () => {
-      loginForm.style.display = 'none';
-      signupForm.style.display = 'flex';
-    });
+      // Form switching
+      loginForm?.querySelector('.sign-up-link')?.addEventListener('click', () => {
+        loginForm.style.display = 'none';
+        signupForm.style.display = 'flex';
+      });
 
-    toLoginLink.addEventListener('click', () => {
-      signupForm.style.display = 'none';
-      loginForm.style.display = 'flex';
-    });
+      signupForm?.querySelector('.sign-up-link')?.addEventListener('click', () => {
+        signupForm.style.display = 'none';
+        loginForm.style.display = 'flex';
+      });
 
-    // Wait for Google Sign In to be ready
-    function initializeGoogleSignIn() {
-      if (window.googleSignInReady) {
-        attachGoogleHandlers();
-      } else {
-        document.addEventListener('googleSignInReady', attachGoogleHandlers);
-      }
-    }
-
-    function attachGoogleHandlers() {
-      const handleClick = () => {
-        if (typeof window.handleGoogleSignIn === 'function') {
-          window.handleGoogleSignIn();
-        } else {
-          console.error('Google Sign In handler not properly initialized');
-          alert('Login system is initializing. Please try again in a moment.');
+      // Wait for Firebase and Google Sign In to be ready
+      let checkInterval = setInterval(() => {
+        if (window.firebase && firebase.auth && typeof window.handleGoogleSignIn === 'function') {
+          clearInterval(checkInterval);
+          console.log('Google Sign In ready');
+          attachGoogleHandlers();
         }
-      };
+      }, 100);
 
-      loginGoogleBtn?.addEventListener('click', handleClick);
-      signupGoogleBtn?.addEventListener('click', handleClick);
-    }
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        console.error('Google Sign In initialization timed out');
+      }, 10000);
 
-    // Initialize when DOM is ready
-    document.addEventListener('DOMContentLoaded', initializeGoogleSignIn);
+      function attachGoogleHandlers() {
+        const handleClick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          try {
+            window.handleGoogleSignIn();
+          } catch (error) {
+            console.error('Google Sign In error:', error);
+            alert('Google Sign In is not available at the moment. Please try again later.');
+          }
+        };
+
+        // Attach click handlers
+        if (loginGoogleBtn) {
+          loginGoogleBtn.style.cursor = 'pointer';
+          loginGoogleBtn.addEventListener('click', handleClick);
+        }
+        if (signupGoogleBtn) {
+          signupGoogleBtn.style.cursor = 'pointer';
+          signupGoogleBtn.addEventListener('click', handleClick);
+        }
+      }
+    });
   </script>
 
   <script>
