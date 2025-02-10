@@ -269,17 +269,33 @@
       const provider = new firebase.auth.GoogleAuthProvider();
       firebase.auth().signInWithPopup(provider)
         .then((result) => {
-          // Save user data to database
           const user = result.user;
-          firebase.database().ref('users/' + user.uid).set({
-            email: user.email,
-            name: user.displayName,
-            profilePic: user.photoURL
-          });
-          
-          // Close the forms
-          loginForm.style.display = 'none';
-          signupForm.style.display = 'none';
+          // Check for existing username
+          firebase.database().ref('users/' + user.uid).once('value')
+            .then((snapshot) => {
+              if (snapshot.exists() && snapshot.val().username) {
+                // User already has a username, skip modal
+                return;
+              }
+              // Show username modal
+              document.getElementById('username-modal').style.display = 'block';
+              const saveUsernameBtn = document.getElementById('save-username-btn');
+              saveUsernameBtn.onclick = () => {
+                const chosenUsername = document.getElementById('username-input').value.trim();
+                if (chosenUsername.length < 3) {
+                  alert('Username must be at least 3 characters long.');
+                  return;
+                }
+                // Save username to DB
+                firebase.database().ref('users/' + user.uid).update({
+                  email: user.email,
+                  name: user.displayName,
+                  profilePic: user.photoURL,
+                  username: chosenUsername
+                });
+                document.getElementById('username-modal').style.display = 'none';
+              };
+            });
         })
         .catch((error) => {
           console.error("Error during Google sign in:", error);
@@ -373,6 +389,17 @@
         }
       };
     </script>
+
+    <!-- Add this new modal for username input -->
+    <div id="username-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+      <div class="modal-content" style="background: white; margin: 15% auto; padding: 20px; width: 70%; max-width: 700px; border-radius: 8px;">
+        <h2>Choose a Username</h2>
+        <div style="margin: 20px 0;">
+          <input type="text" id="username-input" placeholder="Enter your username" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+        <button id="save-username-btn" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Save</button>
+      </div>
+    </div>
 
 </body>
 </html>
