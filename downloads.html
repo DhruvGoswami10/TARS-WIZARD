@@ -62,7 +62,7 @@
                         <p class="text-body">Download this file to ask questions and make movements with voice.</p>
                     </div>
                 </div>
-                <button type="button" class="button" onclick="downloadFile('downloads/voice commands.zip')">
+                <button type="button" class="button" onclick="downloadFile('downloads/voice-commands.zip')">
                     <span class="button__text">Download</span>
                     <span class="button__icon">
                         <svg class="svg" data-name="Layer 2" id="bdd05811-e15d-428c-bb53-8661459f9307" viewBox="0 0 35 35" xmlns="http://www.w3.org/2000/svg">
@@ -117,7 +117,7 @@
 
         <div class="download-section">
             <div class="info-cards-grid">
-                <div class="info-card info-red" onclick="window.location.href='https://drive.google.com/drive/folders/1JkQSiaHRGeOVfGtclAxc8S-cPtWUtZwQ?usp=sharing'">
+                <div class="info-card info-red" onclick="window.location.href='https://www.youtube.com/playlist?list=PL0_krZC_VuISxMFy1NxpuYmY5PP7NPuUr'">
                     <p class="info-tip">Assembly Guide</p>
                     <p class="info-text">Required to assemble your sarcastic robot</p>
                 </div>
@@ -156,7 +156,9 @@
         </div>
 
         <div class="support-section">
-            <a href="https://www.buymeacoffee.com/DhruvG24"><img src="https://img.buymeacoffee.com/button-api/?text=Support AI Revolution&emoji=&slug=DhruvG24&button_colour=FF5F5F&font_colour=ffffff&font_family=Inter&outline_colour=000000&coffee_colour=FFDD00" /></a>
+            <a href="https://www.buymeacoffee.com/DhruvG24">
+                <img src="https://img.buymeacoffee.com/button-api/?text=Support AI Revolution&emoji=&slug=DhruvG24&button_colour=FF5F5F&font_colour=ffffff&font_family=Poppins&outline_colour=000000&coffee_colour=FFDD00" />
+            </a>
         </div>
 
         <div class="components-section">
@@ -241,19 +243,6 @@
                 </div>
 
                 <div class="component-item">
-                    <img src="images/speaker.jpg" alt="Mini Mic" class="component-image">
-                    <div class="component-details">
-                        <h3>Mini Bluetooth Speaker</h3>
-                        <p>To listen TARS roast you!</p>
-                    </div>
-                    <span class="component-quantity">x 1</span>
-                    <a href="https://amzn.to/3PTP9Hd" class="cart-button">
-                        <i class="cart-icon">🛒</i>
-                        Add to Cart
-                    </a>
-                </div>
-
-                <div class="component-item">
                     <img src="images/xt60 connector.jpg" alt="Connector cables" class="component-image">
                     <div class="component-details">
                         <h3>XT60 Connector cables</h3>
@@ -293,13 +282,13 @@
                 </div>
 
                 <div class="component-item">
-                    <img src="images/powerbank.jpg" alt="Powerbank" class="component-image">
+                    <img src="components/speaker.jpg" alt="Powerbank" class="component-image">
                     <div class="component-details">
-                        <h3>PowerBank</h3>
-                        <p>Take it apart and use it. Dimensions = 12 x 7 x 4 cm (L x W x Thickness)</p>
+                        <h3>Cellaris PowerBack</h3>
+                        <p>Take it apart and use it</p>
                     </div>
                     <span class="component-quantity">x 1</span>
-                    <a href="https://www.aliexpress.com/item/1005007622153868.html?spm=a2g0o.productlist.main.6.4cbepntdpntdpL&algo_pvid=0ca042e0-0992-40bc-a9f5-c5c686ce97c2&algo_exp_id=0ca042e0-0992-40bc-a9f5-c5c686ce97c2-5&pdp_npi=4%40dis%21AED%21163.14%2173.40%21%21%2143.12%2119.40%21%402101584917381267862807896e633b%2112000041782559247%21sea%21AE%212041467628%21X&curPageLogUid=F8sdVKIN2AJ8&utparam-url=scene%3Asearch%7Cquery_from%3A" class="cart-button">
+                    <a href="https://shop.com/speaker" class="cart-button">
                         <i class="cart-icon">🛒</i>
                         Add to Cart
                     </a>
@@ -371,13 +360,13 @@
                 </div>
 
                 <div class="component-item">
-                    <img src="images/rods.jpg" alt="Rods" class="component-image">
+                    <img src="components/frame.jpg" alt="Rods" class="component-image">
                     <div class="component-details">
                         <h3>Metal Rods</h3>
                         <p>Length = 100mm and Diameter = 4.6mm</p>
                     </div>
                     <span class="component-quantity">x 3</span>
-                    <a href="https://www.aliexpress.com/item/1005005995241789.html?spm=a2g0o.order_list.order_list_main.102.6b111802VAISwE" class="cart-button">
+                    <a href="https://shop.com/frame" class="cart-button">
                         <i class="cart-icon">🛒</i>
                         Add to Cart
                     </a>
@@ -559,13 +548,23 @@
                 const logoutBtn = document.getElementById("logout-btn");
 
                 if (user) {
-                    content.style.display = 'block';
-                    authMessage.style.display = 'none';
-                    userEmailElement.style.display = "inline-block";
-                    userEmailElement.textContent = user.email;
-                    loginBtn.style.display = "none";
-                    signupBtn.style.display = "none";
-                    logoutBtn.style.display = "inline-block";
+                    // Get username from database
+                    firebase.database().ref('users/' + user.uid).once('value')
+                        .then((snapshot) => {
+                            const userData = snapshot.val();
+                            content.style.display = 'block';
+                            authMessage.style.display = 'none';
+                            userEmailElement.style.display = "inline-block";
+                            userEmailElement.textContent = userData?.username || user.email;
+                            loginBtn.style.display = "none";
+                            signupBtn.style.display = "none";
+                            logoutBtn.style.display = "inline-block";
+                        })
+                        .catch((error) => {
+                            console.error("Error getting username:", error);
+                            // Fallback to email if error occurs
+                            userEmailElement.textContent = user.email;
+                        });
                 } else {
                     content.style.display = 'none';
                     authMessage.style.display = 'block';
