@@ -256,37 +256,37 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     const createPostBtn = document.getElementById("create-post-btn");
     
     if (user) {
-      // Check if this email already has a username
+      // First check if this email has a username already
       firebase.database().ref('users').orderByChild('email').equalTo(user.email).once('value')
         .then((snapshot) => {
-          if (snapshot.exists()) {
-            // User already exists with this email
-            const userData = Object.values(snapshot.val())[0];
-            if (userData.username) {
-              // User already has a username, just update UI
-              document.getElementById("login-form").style.display = "none";
-              document.getElementById("signup-form").style.display = "none";
-              if (userEmailElement) {
-                userEmailElement.textContent = userData.username;
-              }
-              return;
-            }
-          }
+          let existingUsername = null;
           
-          // Only show username prompt if no existing username found
-          return firebase.database().ref('users/' + user.uid).once('value')
-            .then((userSnapshot) => {
-              const currentUserData = userSnapshot.val();
-              if (!currentUserData?.username) {
-                showUsernamePrompt(user);
-              }
-            });
+          // Check if any user with this email has a username
+          snapshot.forEach((childSnapshot) => {
+            const userData = childSnapshot.val();
+            if (userData.username) {
+              existingUsername = userData.username;
+              return true; // Break the forEach loop
+            }
+          });
+
+          if (existingUsername) {
+            // Email already has a username, just update UI
+            if (userEmailElement) {
+              userEmailElement.textContent = existingUsername;
+            }
+            document.getElementById("login-form").style.display = "none";
+            document.getElementById("signup-form").style.display = "none";
+          } else {
+            // No username found for this email, show prompt
+            showUsernamePrompt(user);
+          }
         })
         .catch(error => {
           console.error("Error checking username:", error);
         });
 
-      // Rest of UI updates
+      // Update rest of UI
       logoutBtn.style.display = "inline-block";
       loginBtn.style.display = "none";
       signupBtn.style.display = "none";
