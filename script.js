@@ -256,33 +256,55 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     const createPostBtn = document.getElementById("create-post-btn");
     
     if (user) {
-      // First check if this email has a username already
-      firebase.database().ref('users').orderByChild('email').equalTo(user.email).once('value')
+      // First check user's own data for username
+      firebase.database().ref(`users/${user.uid}`).once('value')
+        .then((snapshot) => {
+          const userData = snapshot.val();
+          if (userData?.username) {
+            // User already has username in their own data
+            if (userEmailElement) {
+              userEmailElement.textContent = userData.username;
+            }
+            document.getElementById("login-form").style.display = "none";
+            document.getElementById("signup-form").style.display = "none";
+            return Promise.reject('USERNAME_EXISTS'); // Skip the email check
+          }
+          
+          // No username in user's data, check if email has username
+          return firebase.database().ref('users').orderByChild('email').equalTo(user.email).once('value');
+        })
         .then((snapshot) => {
           let existingUsername = null;
           
-          // Check if any user with this email has a username
           snapshot.forEach((childSnapshot) => {
             const userData = childSnapshot.val();
             if (userData.username) {
               existingUsername = userData.username;
-              return true; // Break the forEach loop
+              return true;
             }
           });
 
           if (existingUsername) {
-            // Email already has a username, just update UI
-            if (userEmailElement) {
-              userEmailElement.textContent = existingUsername;
-            }
-            document.getElementById("login-form").style.display = "none";
-            document.getElementById("signup-form").style.display = "none";
+            // Found username associated with this email, save it to user's data
+            return firebase.database().ref(`users/${user.uid}`).update({
+              username: existingUsername
+            }).then(() => {
+              if (userEmailElement) {
+                userEmailElement.textContent = existingUsername;
+              }
+              document.getElementById("login-form").style.display = "none";
+              document.getElementById("signup-form").style.display = "none";
+            });
           } else {
-            // No username found for this email, show prompt
+            // No username found anywhere, show prompt
             showUsernamePrompt(user);
           }
         })
         .catch(error => {
+          if (error === 'USERNAME_EXISTS') {
+            // This is our signal to skip the email check
+            return;
+          }
           console.error("Error checking username:", error);
         });
 
