@@ -52,41 +52,6 @@
         padding: 15px;
       }
     }
-
-    /* Add styles for username modal */
-    #username-modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-      z-index: 1000;
-    }
-    
-    #username-modal .modal-content {
-      background: white;
-      margin: 15% auto;
-      padding: 20px;
-      width: 90%;
-      max-width: 500px;
-      border-radius: 8px;
-    }
-  
-    #username-input {
-      width: 100%;
-      padding: 8px;
-      margin: 10px 0;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-    }
-  
-    .username-requirements {
-      color: #666;
-      font-size: 0.9em;
-      margin-bottom: 15px;
-    }
   </style>
 </head>
 <body>
@@ -274,64 +239,57 @@
 
   <script src="script.js"></script>
   
-  <!-- Replace the Google Sign In script section -->
+  <!-- Add this new script section -->
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Get form elements
-      const loginForm = document.getElementById('login-form');
-      const signupForm = document.getElementById('signup-form');
-      const loginGoogleBtn = loginForm?.querySelector('.google-login-button');
-      const signupGoogleBtn = signupForm?.querySelector('.google-login-button');
+    // Get the form elements
+    const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
 
-      // Form switching
-      loginForm?.querySelector('.sign-up-link')?.addEventListener('click', () => {
-        loginForm.style.display = 'none';
-        signupForm.style.display = 'flex';
-      });
+    // Get the switch links
+    const toSignupLink = loginForm.querySelector('.sign-up-link');
+    const toLoginLink = signupForm.querySelector('.sign-up-link');
 
-      signupForm?.querySelector('.sign-up-link')?.addEventListener('click', () => {
-        signupForm.style.display = 'none';
-        loginForm.style.display = 'flex';
-      });
+    // Get Google login buttons
+    const loginGoogleBtn = loginForm.querySelector('.google-login-button');
+    const signupGoogleBtn = signupForm.querySelector('.google-login-button');
 
-      // Wait for Firebase and Google Sign In to be ready
-      let checkInterval = setInterval(() => {
-        if (window.firebase && firebase.auth && typeof window.handleGoogleSignIn === 'function') {
-          clearInterval(checkInterval);
-          console.log('Google Sign In ready');
-          attachGoogleHandlers();
-        }
-      }, 100);
-
-      // Timeout after 10 seconds
-      setTimeout(() => {
-        clearInterval(checkInterval);
-        console.error('Google Sign In initialization timed out');
-      }, 10000);
-
-      function attachGoogleHandlers() {
-        const handleClick = (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          try {
-            window.handleGoogleSignIn();
-          } catch (error) {
-            console.error('Google Sign In error:', error);
-            alert('Google Sign In is not available at the moment. Please try again later.');
-          }
-        };
-
-        // Attach click handlers
-        if (loginGoogleBtn) {
-          loginGoogleBtn.style.cursor = 'pointer';
-          loginGoogleBtn.addEventListener('click', handleClick);
-        }
-        if (signupGoogleBtn) {
-          signupGoogleBtn.style.cursor = 'pointer';
-          signupGoogleBtn.addEventListener('click', handleClick);
-        }
-      }
+    // Add click handlers for switching forms
+    toSignupLink.addEventListener('click', () => {
+      loginForm.style.display = 'none';
+      signupForm.style.display = 'flex';
     });
+
+    toLoginLink.addEventListener('click', () => {
+      signupForm.style.display = 'none';
+      loginForm.style.display = 'flex';
+    });
+
+    // Google Sign In Handler
+    function handleGoogleSignIn() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      firebase.auth().signInWithPopup(provider)
+        .then((result) => {
+          // Save user data to database
+          const user = result.user;
+          firebase.database().ref('users/' + user.uid).set({
+            email: user.email,
+            name: user.displayName,
+            profilePic: user.photoURL
+          });
+          
+          // Close the forms
+          loginForm.style.display = 'none';
+          signupForm.style.display = 'none';
+        })
+        .catch((error) => {
+          console.error("Error during Google sign in:", error);
+          alert(error.message);
+        });
+    }
+
+    // Add click handlers for Google sign-in
+    loginGoogleBtn.addEventListener('click', handleGoogleSignIn);
+    signupGoogleBtn.addEventListener('click', handleGoogleSignIn);
   </script>
 
   <script>
@@ -384,17 +342,6 @@
           <p>5. TARS AI reserves the right to modify or terminate services at any time.</p>
         </div>
         <button id="close-terms" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button>
-      </div>
-    </div>
-
-    <!-- Add this new modal for username prompt -->
-    <div id="username-modal" class="modal">
-      <div class="modal-content">
-        <h2>Choose a Username</h2>
-        <p>Please choose a username to continue:</p>
-        <input type="text" id="username-input" placeholder="Enter username">
-        <p class="username-requirements">Username must be between 3 and 30 characters</p>
-        <button id="save-username-btn">Save Username</button>
       </div>
     </div>
 
