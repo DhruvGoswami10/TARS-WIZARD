@@ -161,18 +161,11 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     
     auth.signInWithEmailAndPassword(email, password)
       .then((userCredential) => {
-        const user = userCredential.user;
-        // Check for username
-        return firebase.database().ref('users/' + user.uid).once('value');
+        return checkAndPromptUsername(userCredential.user);
       })
-      .then((snapshot) => {
-        const userData = snapshot.val();
-        if (!userData || !userData.username) {
-          showUsernamePrompt(auth.currentUser);
-        } else {
-          // Close auth modals if username exists
+      .then((hasUsername) => {
+        if (hasUsername) {
           document.getElementById("login-form").style.display = "none";
-          document.getElementById("signup-form").style.display = "none";
         }
       })
       .catch((error) => alert(error.message));
@@ -253,26 +246,23 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
       firebase.database().ref('users/' + user.uid).once('value')
         .then((snapshot) => {
           const userData = snapshot.val();
-          // Only show username prompt if they haven't set one and haven't been prompted yet
-          if (!userData?.hasSetUsername && !hasPromptedForUsername) {
-            showUsernamePrompt(user);
-          } else if (userData?.username) {
-            // Update UI with existing username
-            const userEmailElement = document.getElementById("user-email");
+          if (userData?.username) {
+            // Update UI with username
             if (userEmailElement) {
               userEmailElement.textContent = userData.username;
             }
+            // Show UI elements
+            logoutBtn.style.display = "inline-block";
+            loginBtn.style.display = "none";
+            signupBtn.style.display = "none";
+            userEmailElement.style.display = "inline-block";
+            notificationBell.style.display = "flex";
+            createPostBtn.style.display = "block";
+            loadNotifications();
           }
         });
-      logoutBtn.style.display = "inline-block";
-      loginBtn.style.display = "none";
-      signupBtn.style.display = "none";
-      userEmailElement.style.display = "inline-block";
-      userEmailElement.textContent = user.email;
-      notificationBell.style.display = "flex";
-      loadNotifications();
-      createPostBtn.style.display = "block";
     } else {
+      // Reset UI for logged out state
       logoutBtn.style.display = "none";
       loginBtn.style.display = "inline-block";
       signupBtn.style.display = "inline-block";
@@ -1559,4 +1549,52 @@ function createPostElement(post, category, userEmail) {
     });
 
   return postDiv;
+}
+
+// Add this function after Firebase initialization
+async function checkAndPromptUsername(user) {
+  try {
+    const snapshot = await db.ref(`users/${user.uid}`).once('value');
+    const userData = snapshot.val();
+    
+    if (!userData?.username) {
+      showUsernamePrompt(user);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("Error checking username:", error);
+    return false;
+  }
+}
+
+// Modify the Google Sign In Handler in your script
+function handleGoogleSignIn() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider)
+    .then(async (result) => {
+      const user = result.user;
+      const hasUsername = await checkAndPromptUsername(user);
+      
+      if (!hasUsername) {
+        // Username prompt will be shown by checkAndPromptUsername
+        return;
+      }
+      
+      // Only update basic user data if username exists
+      return firebase.database().ref('users/' + user.uid).update({
+        email: user.email,
+        name: user.displayName,
+        profilePic: user.photoURL
+      });
+    })
+    .then(() => {
+      // Close the forms only if no username prompt is shown
+      loginForm.style.display = 'none';
+      signupForm.style.display = 'none';
+    })
+    .catch((error) => {
+      console.error("Error during Google sign in:", error);
+      alert(error.message);
+    });
 }
