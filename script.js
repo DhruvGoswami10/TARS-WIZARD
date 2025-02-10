@@ -256,23 +256,37 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     const createPostBtn = document.getElementById("create-post-btn");
     
     if (user) {
-      firebase.database().ref('users/' + user.uid).once('value')
+      // Check if this email already has a username
+      firebase.database().ref('users').orderByChild('email').equalTo(user.email).once('value')
         .then((snapshot) => {
-          const userData = snapshot.val();
-          if (!userData?.username) {
-            // Only show username prompt if user doesn't have a username
-            showUsernamePrompt(user);
-          } else {
-            // User already has username, just update UI
-            document.getElementById("login-form").style.display = "none";
-            document.getElementById("signup-form").style.display = "none";
-            if (userEmailElement) {
-              userEmailElement.textContent = userData.username;
+          if (snapshot.exists()) {
+            // User already exists with this email
+            const userData = Object.values(snapshot.val())[0];
+            if (userData.username) {
+              // User already has a username, just update UI
+              document.getElementById("login-form").style.display = "none";
+              document.getElementById("signup-form").style.display = "none";
+              if (userEmailElement) {
+                userEmailElement.textContent = userData.username;
+              }
+              return;
             }
           }
+          
+          // Only show username prompt if no existing username found
+          return firebase.database().ref('users/' + user.uid).once('value')
+            .then((userSnapshot) => {
+              const currentUserData = userSnapshot.val();
+              if (!currentUserData?.username) {
+                showUsernamePrompt(user);
+              }
+            });
+        })
+        .catch(error => {
+          console.error("Error checking username:", error);
         });
-        
-      // Update rest of UI
+
+      // Rest of UI updates
       logoutBtn.style.display = "inline-block";
       loginBtn.style.display = "none";
       signupBtn.style.display = "none";
