@@ -264,32 +264,9 @@
       loginForm.style.display = 'flex';
     });
 
-    // Google Sign In Handler
-    function handleGoogleSignIn() {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      firebase.auth().signInWithPopup(provider)
-        .then((result) => {
-          // Save user data to database
-          const user = result.user;
-          firebase.database().ref('users/' + user.uid).set({
-            email: user.email,
-            name: user.displayName,
-            profilePic: user.photoURL
-          });
-          
-          // Close the forms
-          loginForm.style.display = 'none';
-          signupForm.style.display = 'none';
-        })
-        .catch((error) => {
-          console.error("Error during Google sign in:", error);
-          alert(error.message);
-        });
-    }
-
-    // Add click handlers for Google sign-in
-    loginGoogleBtn.addEventListener('click', handleGoogleSignIn);
-    signupGoogleBtn.addEventListener('click', handleGoogleSignIn);
+    // Update Google sign-in click handlers to use the global function
+    loginGoogleBtn.addEventListener('click', () => window.handleGoogleSignIn());
+    signupGoogleBtn.addEventListener('click', () => window.handleGoogleSignIn());
   </script>
 
   <script>
