@@ -152,16 +152,79 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
   document.getElementById("login-submit").addEventListener("click", () => {
     const email = document.getElementById("login-email").value;
     const password = document.getElementById("login-password").value;
+
+    if (!document.getElementById('terms-checkbox').checked) {
+      alert('Please accept the Terms and Conditions to continue');
+      return;
+    }
     
     auth.signInWithEmailAndPassword(email, password)
-      .then(() => {
-        document.getElementById("login-form").style.display = "none";
-        loginBtn.style.display = "none";
-        logoutBtn.style.display = "inline-block";
-        newPostSection.style.display = "block";
+      .then((userCredential) => {
+        const user = userCredential.user;
+        // Check for username
+        return firebase.database().ref('users/' + user.uid).once('value');
+      })
+      .then((snapshot) => {
+        const userData = snapshot.val();
+        if (!userData || !userData.username) {
+          showUsernamePrompt(auth.currentUser);
+        } else {
+          // Close auth modals if username exists
+          document.getElementById("login-form").style.display = "none";
+          document.getElementById("signup-form").style.display = "none";
+        }
       })
       .catch((error) => alert(error.message));
   });
+
+  function showUsernamePrompt(user) {
+    const usernameModal = document.getElementById('username-modal');
+    usernameModal.style.display = 'block';
+    
+    document.getElementById('save-username-btn').onclick = () => {
+      const username = document.getElementById('username-input').value.trim();
+      
+      if (username) {
+        if (username.length < 3 || username.length > 30) {
+          alert('Username must be between 3 and 30 characters');
+          return;
+        }
+  
+        // First try to reserve the username
+        firebase.database().ref(`usernames/${username}`).transaction((current) => {
+          if (current === null) {
+            return user.uid;
+          }
+          return; // abort if username exists
+        }).then((result) => {
+          if (result.committed) {
+            // Username was reserved successfully, now update user data
+            return firebase.database().ref(`users/${user.uid}`).update({
+              username: username,
+              email: user.email
+            }).then(() => {
+              usernameModal.style.display = 'none';
+              document.getElementById("login-form").style.display = "none";
+              document.getElementById("signup-form").style.display = "none";
+              
+              // Update UI to show username
+              const userEmailElement = document.getElementById("user-email");
+              if (userEmailElement) {
+                userEmailElement.textContent = username;
+              }
+            });
+          } else {
+            throw new Error('Username already taken');
+          }
+        }).catch(error => {
+          console.error('Error saving username:', error);
+          alert(error.message || 'Error saving username. Please try another.');
+        });
+      } else {
+        alert('Please enter a valid username');
+      }
+    };
+  }
   
   // Logout Functionality
   logoutBtn.addEventListener("click", () => {
@@ -178,6 +241,19 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     const createPostBtn = document.getElementById("create-post-btn");
     
     if (user) {
+      firebase.database().ref('users/' + user.uid).once('value')
+        .then((snapshot) => {
+          const userData = snapshot.val();
+          if (!userData || !userData.username) {
+            showUsernamePrompt(user);
+          } else {
+            // Update UI with username
+            const userEmailElement = document.getElementById("user-email");
+            if (userEmailElement) {
+              userEmailElement.textContent = userData.username;
+            }
+          }
+        });
       logoutBtn.style.display = "inline-block";
       loginBtn.style.display = "none";
       signupBtn.style.display = "none";
@@ -311,14 +387,34 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
   function openPost(category, postId, post, userEmail) {
     currentPostId = postId;
     currentCategory = category;
-    postContentDiv.innerHTML = `
-      <div class="post">
-        <div class="post-content">${post.content}</div>
-        <div class="post-footer">
-          <span class="post-author">Posted by ${userEmail}</span>
-        </div>
-      </div>
-    `;
+    
+    firebase.database().ref(`users/${post.userId}`).once('value')
+      .then(snapshot => {
+        const userData = snapshot.val();
+        const displayName = userData?.username || userData?.email || "deleted user";
+        
+        postContentDiv.innerHTML = `
+          <div class="post">
+            <div class="post-content">${post.content}</div>
+            <div class="post-footer">
+              <span class="post-author">Posted by ${displayName}</span>
+            </div>
+          </div>
+        `;
+      })
+      .catch(error => {
+        console.error("Error getting username:", error);
+        // Fallback to email if error occurs
+        postContentDiv.innerHTML = `
+          <div class="post">
+            <div class="post-content">${post.content}</div>
+            <div class="post-footer">
+              <span class="post-author">Posted by ${userEmail}</span>
+            </div>
+          </div>
+        `;
+      });
+
     document.querySelector('.categories').style.display = 'none';
     postDetailsSection.style.display = "block";
     loadReplies(category, postId);
@@ -716,111 +812,226 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     
     const upvoteBtn = createUpvoteButton(post.key, category, 'post', post.upvoteCount || 0, null);
     
-    postDiv.innerHTML = `
-      <div class="post-content">${post.content}</div>
-      <div class="post-footer">
-        <div class="post-meta">
-          <span class="post-author">Posted by ${userEmail}</span>
-          <span class="reply-count">
-            <svg viewBox="0 0 24 24" width="16" height="16">
-              <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
-            </svg>
-            <span class="count">0</span> replies
-          </span>
-        </div>
-        <div class="post-actions">
-          ${isAuthenticated ? upvoteBtn.outerHTML : ''}
-          ${isAuthor ? deleteButton : ''}
-        </div>
-      </div>
-    `;
-  
-    // Get real-time reply count updates
-    db.ref(`categories/${category}/threads/${post.key}/replies`).on('value', (snapshot) => {
-      const replyCount = snapshot.numChildren() || 0;
-      const countElement = postDiv.querySelector('.reply-count .count');
-      if (countElement) {
-        countElement.textContent = replyCount;
-      }
-    });
-  
-    // Handle delete button click
-    if (deleteButton) {
-      const deleteBtn = postDiv.querySelector(".delete-btn");
-      deleteBtn.addEventListener("click", (event) => {
-        event.stopPropagation();
-        deletePost(category, post.key);
-      });
-    }
-    
-    // Handle upvote button click
-    if (isAuthenticated) {
-      const upvoteButton = postDiv.querySelector('.upvote-btn');
-      if (upvoteButton) {
-        upvoteButton.addEventListener('click', async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          try {
-            const upvoteRef = db.ref(`categories/${category}/threads/${post.key}/upvotes/${auth.currentUser.uid}`);
-            const snapshot = await upvoteRef.once('value');
-            const hasUpvoted = snapshot.exists();
-            
-            await db.ref(`categories/${category}/threads/${post.key}`).transaction(current => {
-              if (!current) return current;
-              
-              if (hasUpvoted) {
-                if (current.upvotes) {
-                  delete current.upvotes[auth.currentUser.uid];
-                }
-                current.upvoteCount = (current.upvoteCount || 1) - 1;
-              } else {
-                if (!current.upvotes) current.upvotes = {};
-                current.upvotes[auth.currentUser.uid] = true;
-                current.upvoteCount = (current.upvoteCount || 0) + 1;
-              }
-              return current;
-            });
-            
-            // Update button state
-            upvoteButton.classList.toggle('active');
-            const countSpan = upvoteButton.querySelector('.upvote-count');
-            const currentCount = parseInt(countSpan.textContent);
-            countSpan.textContent = hasUpvoted ? currentCount - 1 : currentCount + 1;
-            
-            // Handle notification
-            if (!hasUpvoted && post.userId !== auth.currentUser.uid) {
-              addNotification(post.userId, `${auth.currentUser.email} upvoted your post`);
-            }
-          } catch (error) {
-            console.error("Error updating upvote:", error);
+    firebase.database().ref(`users/${post.userId}`).once('value')
+      .then(snapshot => {
+        const userData = snapshot.val();
+        const displayName = userData?.username || userData?.email || "deleted user";
+        
+        postDiv.innerHTML = `
+          <div class="post-content">${post.content}</div>
+          <div class="post-footer">
+            <div class="post-meta">
+              <span class="post-author">Posted by ${displayName}</span>
+              <span class="reply-count">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+                </svg>
+                <span class="count">0</span> replies
+              </span>
+            </div>
+            <div class="post-actions">
+              ${isAuthenticated ? upvoteBtn.outerHTML : ''}
+              ${isAuthor ? deleteButton : ''}
+            </div>
+          </div>
+        `;
+
+        // Get real-time reply count updates
+        db.ref(`categories/${category}/threads/${post.key}/replies`).on('value', (snapshot) => {
+          const replyCount = snapshot.numChildren() || 0;
+          const countElement = postDiv.querySelector('.reply-count .count');
+          if (countElement) {
+            countElement.textContent = replyCount;
           }
         });
-      }
-    }
-    
-    // Add post click handler
-    postDiv.addEventListener("click", () => {
-      openPost(category, post.key, post, userEmail);
-    });
-    
-    // Get reply count before creating post element
-    db.ref(`categories/${category}/threads/${post.key}/replies`).once('value', (snapshot) => {
-      const replyCount = snapshot.numChildren();
-      const countElement = postDiv.querySelector('.reply-count .count');
-      if (countElement) {
-        countElement.textContent = replyCount;
-      }
-    });
 
-    // Add listener for reply count updates
-    db.ref(`categories/${category}/threads/${post.key}/replies`).on('value', (snapshot) => {
-      const replyCount = snapshot.numChildren();
-      const countElement = postDiv.querySelector('.reply-count .count');
-      if (countElement) {
-        countElement.textContent = replyCount;
-      }
-    });
+        // Handle delete button click
+        if (deleteButton) {
+          const deleteBtn = postDiv.querySelector(".delete-btn");
+          deleteBtn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            deletePost(category, post.key);
+          });
+        }
+        
+        // Handle upvote button click
+        if (isAuthenticated) {
+          const upvoteButton = postDiv.querySelector('.upvote-btn');
+          if (upvoteButton) {
+            upvoteButton.addEventListener('click', async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              
+              try {
+                const upvoteRef = db.ref(`categories/${category}/threads/${post.key}/upvotes/${auth.currentUser.uid}`);
+                const snapshot = await upvoteRef.once('value');
+                const hasUpvoted = snapshot.exists();
+                
+                await db.ref(`categories/${category}/threads/${post.key}`).transaction(current => {
+                  if (!current) return current;
+                  
+                  if (hasUpvoted) {
+                    if (current.upvotes) {
+                      delete current.upvotes[auth.currentUser.uid];
+                    }
+                    current.upvoteCount = (current.upvoteCount || 1) - 1;
+                  } else {
+                    if (!current.upvotes) current.upvotes = {};
+                    current.upvotes[auth.currentUser.uid] = true;
+                    current.upvoteCount = (current.upvoteCount || 0) + 1;
+                  }
+                  return current;
+                });
+                
+                // Update button state
+                upvoteButton.classList.toggle('active');
+                const countSpan = upvoteButton.querySelector('.upvote-count');
+                const currentCount = parseInt(countSpan.textContent);
+                countSpan.textContent = hasUpvoted ? currentCount - 1 : currentCount + 1;
+                
+                // Handle notification
+                if (!hasUpvoted && post.userId !== auth.currentUser.uid) {
+                  addNotification(post.userId, `${auth.currentUser.email} upvoted your post`);
+                }
+              } catch (error) {
+                console.error("Error updating upvote:", error);
+              }
+            });
+          }
+        }
+        
+        // Add post click handler
+        postDiv.addEventListener("click", () => {
+          openPost(category, post.key, post, userEmail);
+        });
+        
+        // Get reply count before creating post element
+        db.ref(`categories/${category}/threads/${post.key}/replies`).once('value', (snapshot) => {
+          const replyCount = snapshot.numChildren();
+          const countElement = postDiv.querySelector('.reply-count .count');
+          if (countElement) {
+            countElement.textContent = replyCount;
+          }
+        });
+
+        // Add listener for reply count updates
+        db.ref(`categories/${category}/threads/${post.key}/replies`).on('value', (snapshot) => {
+          const replyCount = snapshot.numChildren();
+          const countElement = postDiv.querySelector('.reply-count .count');
+          if (countElement) {
+            countElement.textContent = replyCount;
+          }
+        });
+      })
+      .catch(error => {
+        console.error("Error getting username:", error);
+        // Fallback to email if error occurs
+        postDiv.innerHTML = `
+          <div class="post-content">${post.content}</div>
+          <div class="post-footer">
+            <div class="post-meta">
+              <span class="post-author">Posted by ${userEmail}</span>
+              <span class="reply-count">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+                </svg>
+                <span class="count">0</span> replies
+              </span>
+            </div>
+            <div class="post-actions">
+              ${isAuthenticated ? upvoteBtn.outerHTML : ''}
+              ${isAuthor ? deleteButton : ''}
+            </div>
+          </div>
+        `;
+
+        // Get real-time reply count updates
+        db.ref(`categories/${category}/threads/${post.key}/replies`).on('value', (snapshot) => {
+          const replyCount = snapshot.numChildren() || 0;
+          const countElement = postDiv.querySelector('.reply-count .count');
+          if (countElement) {
+            countElement.textContent = replyCount;
+          }
+        });
+
+        // Handle delete button click
+        if (deleteButton) {
+          const deleteBtn = postDiv.querySelector(".delete-btn");
+          deleteBtn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            deletePost(category, post.key);
+          });
+        }
+        
+        // Handle upvote button click
+        if (isAuthenticated) {
+          const upvoteButton = postDiv.querySelector('.upvote-btn');
+          if (upvoteButton) {
+            upvoteButton.addEventListener('click', async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              
+              try {
+                const upvoteRef = db.ref(`categories/${category}/threads/${post.key}/upvotes/${auth.currentUser.uid}`);
+                const snapshot = await upvoteRef.once('value');
+                const hasUpvoted = snapshot.exists();
+                
+                await db.ref(`categories/${category}/threads/${post.key}`).transaction(current => {
+                  if (!current) return current;
+                  
+                  if (hasUpvoted) {
+                    if (current.upvotes) {
+                      delete current.upvotes[auth.currentUser.uid];
+                    }
+                    current.upvoteCount = (current.upvoteCount || 1) - 1;
+                  } else {
+                    if (!current.upvotes) current.upvotes = {};
+                    current.upvotes[auth.currentUser.uid] = true;
+                    current.upvoteCount = (current.upvoteCount || 0) + 1;
+                  }
+                  return current;
+                });
+                
+                // Update button state
+                upvoteButton.classList.toggle('active');
+                const countSpan = upvoteButton.querySelector('.upvote-count');
+                const currentCount = parseInt(countSpan.textContent);
+                countSpan.textContent = hasUpvoted ? currentCount - 1 : currentCount + 1;
+                
+                // Handle notification
+                if (!hasUpvoted && post.userId !== auth.currentUser.uid) {
+                  addNotification(post.userId, `${auth.currentUser.email} upvoted your post`);
+                }
+              } catch (error) {
+                console.error("Error updating upvote:", error);
+              }
+            });
+          }
+        }
+        
+        // Add post click handler
+        postDiv.addEventListener("click", () => {
+          openPost(category, post.key, post, userEmail);
+        });
+        
+        // Get reply count before creating post element
+        db.ref(`categories/${category}/threads/${post.key}/replies`).once('value', (snapshot) => {
+          const replyCount = snapshot.numChildren();
+          const countElement = postDiv.querySelector('.reply-count .count');
+          if (countElement) {
+            countElement.textContent = replyCount;
+          }
+        });
+
+        // Add listener for reply count updates
+        db.ref(`categories/${category}/threads/${post.key}/replies`).on('value', (snapshot) => {
+          const replyCount = snapshot.numChildren();
+          const countElement = postDiv.querySelector('.reply-count .count');
+          if (countElement) {
+            countElement.textContent = replyCount;
+          }
+        });
+      });
 
     return postDiv;
   }
@@ -1255,35 +1466,54 @@ function createPostElement(post, category, userEmail) {
   const isAuthenticated = auth.currentUser;
   const isAuthor = isAuthenticated && auth.currentUser.uid === post.userId;
   
-  postDiv.innerHTML = `
-    <div class="post-content">${post.content}</div>
-    <div class="post-footer">
-      <div class="post-meta">
-        <span class="post-author">Posted by ${userEmail}</span>
-        <span class="reply-count">
-          <svg viewBox="0 0 24 24" width="16" height="16">
-            <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
-          </svg>
-          <span class="count">0</span> replies
-        </span>
-      </div>
-      <div class="post-actions">
-        ${isAuthenticated ? createUpvoteButton(post.key, category, 'post', post.upvoteCount || 0).outerHTML : ''}
-        ${isAuthor ? deleteButton : ''}
-      </div>
-    </div>
-  `;
+  firebase.database().ref(`users/${post.userId}`).once('value')
+    .then(snapshot => {
+      const userData = snapshot.val();
+      const displayName = userData?.username || userData?.email || "deleted user";
+      
+      postDiv.innerHTML = `
+        <div class="post-content">${post.content}</div>
+        <div class="post-footer">
+          <div class="post-meta">
+            <span class="post-author">Posted by ${displayName}</span>
+            <span class="reply-count">
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+              </svg>
+              <span class="count">0</span> replies
+            </span>
+          </div>
+          <div class="post-actions">
+            ${isAuthenticated ? createUpvoteButton(post.key, category, 'post', post.upvoteCount || 0).outerHTML : ''}
+            ${isAuthor ? deleteButton : ''}
+          </div>
+        </div>
+      `;
 
-  // Get real-time reply count updates
-  db.ref(`categories/${category}/threads/${post.key}/replies`).on('value', (snapshot) => {
-    const replyCount = snapshot.numChildren() || 0;
-    const countElement = postDiv.querySelector('.reply-count .count');
-    if (countElement) {
-      countElement.textContent = replyCount;
-    }
-  });
+      // Get real-time reply count updates
+      db.ref(`categories/${category}/threads/${post.key}/replies`).on('value', (snapshot) => {
+        const replyCount = snapshot.numChildren() || 0;
+        const countElement = postDiv.querySelector('.reply-count .count');
+        if (countElement) {
+          countElement.textContent = replyCount;
+        }
+      });
 
-  // ...rest of the existing function code...
+      // ...rest of the existing function code...
+    })
+    .catch(error => {
+      console.error("Error getting username:", error);
+      // Fallback to email if error occurs
+      postDiv.innerHTML = `
+        <div class="post-content">${post.content}</div>
+        <div class="post-footer">
+          <div class="post-meta">
+            <span class="post-author">Posted by ${userEmail}</span>
+            <!-- ...rest of existing post footer... -->
+          </div>
+        </div>
+      `;
+    });
 
   return postDiv;
 }
