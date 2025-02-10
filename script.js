@@ -1598,3 +1598,51 @@ function handleGoogleSignIn() {
       alert(error.message);
     });
 }
+
+// Move checkAndPromptUsername inside Firebase initialization
+async function checkAndPromptUsername(user) {
+  try {
+    const snapshot = await db.ref(`users/${user.uid}`).once('value');
+    const userData = snapshot.val();
+    
+    if (!userData?.username) {
+      showUsernamePrompt(user);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("Error checking username:", error);
+    return false;
+  }
+}
+
+// Make handleGoogleSignIn available globally
+window.handleGoogleSignIn = function() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider)
+    .then((result) => {
+      const user = result.user;
+      return checkAndPromptUsername(user);
+    })
+    .then((hasUsername) => {
+      if (hasUsername) {
+        // Only update basic user data if username exists
+        return auth.currentUser && db.ref('users/' + auth.currentUser.uid).update({
+          email: auth.currentUser.email,
+          name: auth.currentUser.displayName,
+          profilePic: auth.currentUser.photoURL
+        });
+      }
+    })
+    .then(() => {
+      // Close the forms if we have a username
+      const loginForm = document.getElementById('login-form');
+      const signupForm = document.getElementById('signup-form');
+      if (loginForm) loginForm.style.display = 'none';
+      if (signupForm) signupForm.style.display = 'none';
+    })
+    .catch((error) => {
+      console.error("Error during Google sign in:", error);
+      alert(error.message);
+    });
+};
