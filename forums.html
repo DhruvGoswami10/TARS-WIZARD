@@ -274,21 +274,17 @@
 
   <script src="script.js"></script>
   
-  <!-- Add this new script section -->
+  <!-- Replace the Google Sign In script section -->
   <script>
     // Get the form elements
     const loginForm = document.getElementById('login-form');
     const signupForm = document.getElementById('signup-form');
-
-    // Get the switch links
+    const loginGoogleBtn = loginForm.querySelector('.google-login-button');
+    const signupGoogleBtn = signupForm.querySelector('.google-login-button');
     const toSignupLink = loginForm.querySelector('.sign-up-link');
     const toLoginLink = signupForm.querySelector('.sign-up-link');
 
-    // Get Google login buttons
-    const loginGoogleBtn = loginForm.querySelector('.google-login-button');
-    const signupGoogleBtn = signupForm.querySelector('.google-login-button');
-
-    // Add click handlers for switching forms
+    // Form switching logic
     toSignupLink.addEventListener('click', () => {
       loginForm.style.display = 'none';
       signupForm.style.display = 'flex';
@@ -299,22 +295,31 @@
       loginForm.style.display = 'flex';
     });
 
-    // Add click handlers for Google sign-in using the global function
-    loginGoogleBtn?.addEventListener('click', () => {
-      if (typeof window.handleGoogleSignIn === 'function') {
-        window.handleGoogleSignIn();
+    // Wait for Google Sign In to be ready
+    function initializeGoogleSignIn() {
+      if (window.googleSignInReady) {
+        attachGoogleHandlers();
       } else {
-        console.error('Google Sign In handler not initialized');
+        document.addEventListener('googleSignInReady', attachGoogleHandlers);
       }
-    });
+    }
 
-    signupGoogleBtn?.addEventListener('click', () => {
-      if (typeof window.handleGoogleSignIn === 'function') {
-        window.handleGoogleSignIn();
-      } else {
-        console.error('Google Sign In handler not initialized');
-      }
-    });
+    function attachGoogleHandlers() {
+      const handleClick = () => {
+        if (typeof window.handleGoogleSignIn === 'function') {
+          window.handleGoogleSignIn();
+        } else {
+          console.error('Google Sign In handler not properly initialized');
+          alert('Login system is initializing. Please try again in a moment.');
+        }
+      };
+
+      loginGoogleBtn?.addEventListener('click', handleClick);
+      signupGoogleBtn?.addEventListener('click', handleClick);
+    }
+
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', initializeGoogleSignIn);
   </script>
 
   <script>
