@@ -1596,3 +1596,41 @@ window.handleGoogleSignIn = async function() {
 // Signal that Google Sign In is ready
 window.googleSignInReady = true;
 document.dispatchEvent(new Event('googleSignInReady'));
+
+// Make handleGoogleSignIn globally available immediately after Firebase init
+window.handleGoogleSignIn = async function() {
+  if (!firebase.auth) {
+    throw new Error('Firebase Auth is not initialized');
+  }
+
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    const result = await auth.signInWithPopup(provider);
+    const user = result.user;
+    
+    // Create/update user data
+    await db.ref(`users/${user.uid}`).update({
+      email: user.email,
+      name: user.displayName,
+      profilePic: user.photoURL,
+      lastLogin: firebase.database.ServerValue.TIMESTAMP
+    });
+
+    // Check for username
+    const userData = (await db.ref(`users/${user.uid}`).once('value')).val();
+    if (!userData?.username) {
+      showUsernamePrompt(user);
+    } else {
+      // Close auth forms if username exists
+      document.querySelectorAll('.auth-modal').forEach(modal => {
+        modal.style.display = 'none';
+      });
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error during Google sign in:", error);
+    alert(error.message);
+    return false;
+  }
+};
