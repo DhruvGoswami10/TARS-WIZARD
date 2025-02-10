@@ -428,6 +428,86 @@
 
       return postDiv;
     }
+
+    // Update the createReplyElement function
+    function createReplyElement(reply, replyKey, category, postId) {
+      const replyDiv = document.createElement("div");
+      replyDiv.classList.add("reply");
+      
+      // First get userId from the email
+      firebase.database().ref('users').orderByChild('email').equalTo(reply.user).once('value')
+        .then(snapshot => {
+          let userId = null;
+          snapshot.forEach(child => {
+            userId = child.key; // This is the user's UID
+          });
+          
+          if (userId) {
+            // Now get the username using the userId
+            return firebase.database().ref(`users/${userId}`).once('value');
+          } else {
+            throw new Error('User not found');
+          }
+        })
+        .then(userSnapshot => {
+          const userData = userSnapshot.val();
+          const displayName = userData?.username || reply.user; // Fallback to email if no username
+          
+          const deleteButton = auth.currentUser && auth.currentUser.email === reply.user 
+            ? `<button class="delete-reply-btn"><!-- ...existing delete button SVG... --></button>` 
+            : '';
+          
+          replyDiv.innerHTML = `
+            <div class="reply-content">${reply.content}</div>
+            <div class="reply-footer">
+              <div class="reply-actions">
+                <span class="reply-author">Replied by ${displayName}</span>
+              </div>
+              <div class="reply-actions">
+                ${deleteButton}
+              </div>
+            </div>
+          `;
+          
+          // Add existing handlers for upvote and delete
+          // ...rest of existing code...
+        })
+        .catch(error => {
+          console.error("Error getting username:", error);
+          // Fallback to email if error occurs
+          replyDiv.innerHTML = `
+            <div class="reply-content">${reply.content}</div>
+            <div class="reply-footer">
+              <div class="reply-actions">
+                <span class="reply-author">Replied by ${reply.user}</span>
+              </div>
+            </div>
+          `;
+        });
+  
+      return replyDiv;
+    }
+  
+    // Also update the reply button handler to store userId instead of email
+    replyBtn.addEventListener("click", () => {
+      const content = replyQuill.root.innerHTML;
+      if (content.trim() !== '<p><br></p>') {
+        const user = auth.currentUser;
+        
+        db.ref(`categories/${currentCategory}/threads/${currentPostId}/replies`).push({
+          content: content,
+          userId: user.uid,  // Store userId instead of email
+          timestamp: firebase.database.ServerValue.TIMESTAMP
+        }).then(() => {
+          replyQuill.setText('');
+        }).catch(error => {
+          console.error("Error adding reply:", error);
+          alert("Error posting reply");
+        });
+      } else {
+        alert("Reply cannot be empty!");
+      }
+    });
   </script>
 
   <script>
