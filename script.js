@@ -36,6 +36,7 @@ if(typeof firebase !== 'undefined') {
 
   let currentPostId = null;
   let currentCategory = null;
+  let hasPromptedForUsername = false; // Add this at the top with other global variables
 
   // Initialize Quill editors
   const postQuill = new Quill('#new-post-editor', {
@@ -178,6 +179,12 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
   });
 
   function showUsernamePrompt(user) {
+    // Don't show prompt if we've already shown it
+    if (hasPromptedForUsername) {
+      return;
+    }
+    
+    hasPromptedForUsername = true;
     const usernameModal = document.getElementById('username-modal');
     usernameModal.style.display = 'block';
     
@@ -201,7 +208,8 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
             // Username was reserved successfully, now update user data
             return firebase.database().ref(`users/${user.uid}`).update({
               username: username,
-              email: user.email
+              email: user.email,
+              hasSetUsername: true // Add this flag to user data
             }).then(() => {
               usernameModal.style.display = 'none';
               document.getElementById("login-form").style.display = "none";
@@ -219,6 +227,7 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
         }).catch(error => {
           console.error('Error saving username:', error);
           alert(error.message || 'Error saving username. Please try another.');
+          hasPromptedForUsername = false; // Reset flag on error
         });
       } else {
         alert('Please enter a valid username');
@@ -244,10 +253,11 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
       firebase.database().ref('users/' + user.uid).once('value')
         .then((snapshot) => {
           const userData = snapshot.val();
-          if (!userData || !userData.username) {
+          // Only show username prompt if they haven't set one and haven't been prompted yet
+          if (!userData?.hasSetUsername && !hasPromptedForUsername) {
             showUsernamePrompt(user);
-          } else {
-            // Update UI with username
+          } else if (userData?.username) {
+            // Update UI with existing username
             const userEmailElement = document.getElementById("user-email");
             if (userEmailElement) {
               userEmailElement.textContent = userData.username;
