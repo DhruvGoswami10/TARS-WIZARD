@@ -259,22 +259,24 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
       firebase.database().ref('users/' + user.uid).once('value')
         .then((snapshot) => {
           const userData = snapshot.val();
-          // Only show username prompt if they haven't set one and haven't been prompted yet
-          if (!userData?.hasSetUsername && !hasPromptedForUsername) {
+          if (!userData?.username) {
+            // Only show username prompt if user doesn't have a username
             showUsernamePrompt(user);
-          } else if (userData?.username) {
-            // Update UI with existing username
-            const userEmailElement = document.getElementById("user-email");
+          } else {
+            // User already has username, just update UI
+            document.getElementById("login-form").style.display = "none";
+            document.getElementById("signup-form").style.display = "none";
             if (userEmailElement) {
               userEmailElement.textContent = userData.username;
             }
           }
         });
+        
+      // Update rest of UI
       logoutBtn.style.display = "inline-block";
       loginBtn.style.display = "none";
       signupBtn.style.display = "none";
       userEmailElement.style.display = "inline-block";
-      userEmailElement.textContent = user.email;
       notificationBell.style.display = "flex";
       loadNotifications();
       createPostBtn.style.display = "block";
