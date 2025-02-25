@@ -217,8 +217,7 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
             // Username was reserved successfully, now update user data
             return firebase.database().ref(`users/${user.uid}`).update({
               username: username,
-              email: user.email,
-              hasSetUsername: true // Add this flag to user data
+              email: user.email
             }).then(() => {
               usernameModal.style.display = 'none';
               document.getElementById("login-form").style.display = "none";
@@ -263,7 +262,7 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
         .then((snapshot) => {
           const userData = snapshot.val();
           // Only show username prompt if they haven't set one and haven't been prompted yet
-          if (!userData?.hasSetUsername && !hasPromptedForUsername) {
+          if (!userData?.username && !hasPromptedForUsername) {
             showUsernamePrompt(user);
           } else if (userData?.username) {
             // Update UI with existing username
@@ -1635,7 +1634,7 @@ window.handleGoogleSignIn = async function() {
 
     // Check for username
     const userData = (await db.ref(`users/${user.uid}`).once('value')).val();
-    if (!userData?.hasSetUsername) {
+    if (!userData?.username) {
       // Show username modal if no username is found
       document.getElementById('username-modal').style.display = 'block';
       
@@ -1655,9 +1654,7 @@ window.handleGoogleSignIn = async function() {
               email: user.email,
               name: user.displayName || '',
               profilePic: user.photoURL || '',
-              username: chosenUsername,
-              hasSetUsername: true, // Set the flag to true
-              lastLogin: new Date().toISOString()
+              username: chosenUsername
             });
             document.getElementById('username-modal').style.display = 'none';
             resolve(true);
