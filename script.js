@@ -1827,3 +1827,116 @@ auth.onAuthStateChanged((user) => {
 });
 
 // ...existing code...
+
+// Update auth state change handler
+auth.onAuthStateChanged((user) => {
+  const userEmailElement = document.getElementById("user-email");
+  const notificationBell = document.getElementById("notification-bell");
+  const createPostBtn = document.getElementById("create-post-btn");
+  
+  if (user) {
+    // Always check database first for existing username
+    firebase.database().ref(`users/${user.uid}`).once('value')
+      .then((snapshot) => {
+        const userData = snapshot.val();
+        
+        if (userData && userData.username) {
+          // Username exists, display it and skip prompt
+          userEmailElement.style.display = "inline-block";
+          userEmailElement.textContent = userData.username;
+          hasPromptedForUsername = true; // Prevent further prompts
+        } else {
+          // Only show username prompt if no username exists
+          showUsernamePrompt(user);
+        }
+
+        // Show authenticated UI elements
+        logoutBtn.style.display = "inline-block";
+        loginBtn.style.display = "none";
+        signupBtn.style.display = "none";
+        notificationBell.style.display = "flex";
+        createPostBtn.style.display = "block";
+        loadNotifications();
+      })
+      .catch((error) => {
+        console.error("Error fetching user data:", error);
+        // Fallback to email display
+        userEmailElement.style.display = "inline-block";
+        userEmailElement.textContent = user.email;
+      });
+  } else {
+    // Reset all UI elements for logged out state
+    hasPromptedForUsername = false; // Reset prompt flag
+    logoutBtn.style.display = "none";
+    loginBtn.style.display = "inline-block";
+    signupBtn.style.display = "inline-block";
+    userEmailElement.style.display = "none";
+    userEmailElement.textContent = "";
+    notificationBell.style.display = "none";
+    createPostBtn.style.display = "none";
+  }
+  
+  loadAllCategoryPreviews();
+});
+
+// Update showUsernamePrompt to handle the modal more reliably
+function showUsernamePrompt(user) {
+  const usernameModal = document.getElementById('username-modal');
+  const userEmailElement = document.getElementById("user-email");
+  
+  // Show the modal
+  usernameModal.style.display = 'block';
+  
+  document.getElementById('save-username-btn').onclick = () => {
+    const username = document.getElementById('username-input').value.trim();
+    
+    if (username) {
+      if (username.length < 3 || username.length > 30) {
+        alert('Username must be between 3 and 30 characters');
+        return;
+      }
+
+      // First try to reserve the username
+      firebase.database().ref(`usernames/${username}`).transaction((current) => {
+        if (current === null) {
+          return user.uid;
+        }
+        return; // abort if username exists
+      }).then((result) => {
+        if (result.committed) {
+          // Username was reserved successfully, now update user data
+          return firebase.database().ref(`users/${user.uid}`).update({
+            username: username,
+            email: user.email
+          }).then(() => {
+            // Update UI and close modals
+            usernameModal.style.display = 'none';
+            document.getElementById("login-form").style.display = "none";
+            document.getElementById("signup-form").style.display = "none";
+            
+            if (userEmailElement) {
+              userEmailElement.textContent = username;
+            }
+            hasPromptedForUsername = true; // Prevent further prompts
+          });
+        } else {
+          throw new Error('Username already taken');
+        }
+      }).catch(error => {
+        console.error('Error saving username:', error);
+        alert(error.message || 'Error saving username. Please try another.');
+      });
+    } else {
+      alert('Please enter a valid username');
+    }
+  };
+
+  // Prevent closing modal by clicking outside - username is required
+  window.onclick = (event) => {
+    if (event.target === usernameModal) {
+      alert('Please choose a username to continue');
+    }
+  };
+}
+
+// ...existing code...
