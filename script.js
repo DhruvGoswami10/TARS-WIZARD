@@ -102,19 +102,10 @@ if(typeof firebase !== 'undefined') {
         .then((userCredential) => {
             const user = userCredential.user;
             
-            // First create the user data
-            return db.ref(`users/${user.uid}`).update({
+            // Just store email and creation time
+            return db.ref(`users/${user.uid}`).set({
                 email: user.email,
                 createdAt: firebase.database.ServerValue.TIMESTAMP
-            }).then(() => {
-                // Then try to increment the counter
-                return db.ref('metrics/registeredUsers').transaction((currentValue) => {
-                    return (currentValue || 0) + 1;
-                });
-            }).catch(error => {
-                // If counter update fails, at least the user is created
-                console.warn("Counter update failed:", error);
-                return Promise.resolve();
             });
         })
         .then(() => {
@@ -160,20 +151,9 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     }
     
     auth.signInWithEmailAndPassword(email, password)
-      .then((userCredential) => {
-        const user = userCredential.user;
-        // Check for username
-        return firebase.database().ref('users/' + user.uid).once('value');
-      })
-      .then((snapshot) => {
-        const userData = snapshot.val();
-        if (!userData || !userData.username) {
-          showUsernamePrompt(auth.currentUser);
-        } else {
-          // Close auth modals if username exists
-          document.getElementById("login-form").style.display = "none";
-          document.getElementById("signup-form").style.display = "none";
-        }
+      .then(() => {
+        document.getElementById("login-form").style.display = "none";
+        document.getElementById("signup-form").style.display = "none";
       })
       .catch((error) => alert(error.message));
   });
@@ -255,26 +235,16 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
         .then((snapshot) => {
           const existingData = snapshot.val() || {};
           
-          // If username exists, only update lastLogin
-          if (existingData.username) {
-            return firebase.database().ref(`users/${user.uid}`).update({
-              lastLogin: firebase.database.ServerValue.TIMESTAMP
-            }).then(() => existingData); // Pass existing data to next then
-          } else if (!hasPromptedForUsername) {
-            // Show username prompt if no username exists
-            showUsernamePrompt(user);
-          }
-          return existingData;
+          // Only update lastLogin
+          return firebase.database().ref(`users/${user.uid}`).update({
+            lastLogin: firebase.database.ServerValue.TIMESTAMP,
+            email: user.email || existingData.email
+          });
         })
-        .then((userData) => {
-          // Update UI with user data
-          if (userData?.username) {
-            userEmailElement.style.display = "inline-block";
-            userEmailElement.textContent = userData.username;
-          } else {
-            userEmailElement.style.display = "inline-block";
-            userEmailElement.textContent = user.email;
-          }
+        .then(() => {
+          // Update UI with email
+          userEmailElement.style.display = "inline-block";
+          userEmailElement.textContent = user.email;
 
           // Show authenticated UI elements
           logoutBtn.style.display = "inline-block";
