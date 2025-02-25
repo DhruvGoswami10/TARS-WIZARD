@@ -263,6 +263,9 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
               userEmailElement.textContent = userData.username;
             }
           }
+        })
+        .catch((error) => {
+          console.error("Error fetching user data:", error);
         });
       logoutBtn.style.display = "inline-block";
       loginBtn.style.display = "none";
@@ -1623,19 +1626,53 @@ window.handleGoogleSignIn = async function() {
 
     // Check for username
     const userData = (await db.ref(`users/${user.uid}`).once('value')).val();
-    if (!userData?.username) {
-      showUsernamePrompt(user);
-    } else {
-      // Close auth forms if username exists
-      document.querySelectorAll('.auth-modal').forEach(modal => {
-        modal.style.display = 'none';
+    if (!userData?.hasSetUsername) {
+      // Show username modal if no username is found
+      document.getElementById('username-modal').style.display = 'block';
+      
+      // Set up event handler for username save button
+      return new Promise((resolve) => {
+        document.getElementById('save-username-btn').onclick = async () => {
+          const chosenUsername = document.getElementById('username-input').value.trim();
+          
+          if (chosenUsername.length < 3) {
+            alert('Username must be at least 3 characters long.');
+            return;
+          }
+          
+          try {
+            // Save complete user data including username to correct path
+            await firebase.database().ref('users/' + user.uid).update({
+              email: user.email,
+              name: user.displayName || '',
+              profilePic: user.photoURL || '',
+              username: chosenUsername,
+              hasSetUsername: true, // Set the flag to true
+              lastLogin: new Date().toISOString()
+            });
+            document.getElementById('username-modal').style.display = 'none';
+            resolve(true);
+          } catch (err) {
+            console.error("Error saving username:", err);
+            alert("Failed to save username. Please try again.");
+            resolve(false);
+          }
+        };
       });
+    } else {
+      // Update last login time for existing users
+      await firebase.database().ref('users/' + user.uid).update({
+        lastLogin: new Date().toISOString()
+      });
+      return true; // User already has a username
     }
-
-    return true;
   } catch (error) {
     console.error("Error during Google sign in:", error);
     alert(error.message);
     return false;
+  } finally {
+    googleSignInInProgress = false;
   }
 };
+
+// ...existing code...
