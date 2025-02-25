@@ -103,7 +103,7 @@ if(typeof firebase !== 'undefined') {
             const user = userCredential.user;
             
             // First create the user data
-            return db.ref(`users/${user.uid}`).set({
+            return db.ref(`users/${user.uid}`).update({
                 email: user.email,
                 createdAt: firebase.database.ServerValue.TIMESTAMP
             }).then(() => {
@@ -136,7 +136,7 @@ function syncUsersCount() {
     db.ref('users').once('value')
         .then(snapshot => {
             const userCount = snapshot.numChildren();
-            return db.ref('metrics/registeredUsers').set(userCount);
+            return db.ref('metrics/registeredUsers').update(userCount);
         })
         .catch(error => console.error("Error syncing users count:", error));
 }
@@ -1182,7 +1182,7 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
       e.target.classList.remove('unread');
       const notifKey = e.target.dataset.key;
       if (notifKey && auth.currentUser) {
-        db.ref(`users/${auth.currentUser.uid}/notifications/${notifKey}/read`).set(true);
+        db.ref(`users/${auth.currentUser.uid}/notifications/${notifKey}/read`).update(true);
       }
     }
   });
@@ -1216,7 +1216,7 @@ function initializeCategories() {
   categories.forEach(category => {
     db.ref(`categories/${category}`).once('value', snapshot => {
       if (!snapshot.exists()) {
-        db.ref(`categories/${category}`).set({
+        db.ref(`categories/${category}`).update({
           threads: {}
         });
       }
