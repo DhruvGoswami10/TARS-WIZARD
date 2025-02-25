@@ -1682,3 +1682,148 @@ window.handleGoogleSignIn = async function() {
 };
 
 // ...existing code...
+
+// Update Google Sign In handler to only check username
+window.handleGoogleSignIn = async function() {
+  if (!firebase.auth) {
+    throw new Error('Firebase Auth is not initialized');
+  }
+
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    const result = await auth.signInWithPopup(provider);
+    const user = result.user;
+    
+    // First check if username exists
+    const userData = (await db.ref(`users/${user.uid}`).once('value')).val();
+    
+    if (!userData || !userData.username) {
+      // Show username modal if no username is found
+      document.getElementById('username-modal').style.display = 'block';
+      
+      return new Promise((resolve) => {
+        document.getElementById('save-username-btn').onclick = async () => {
+          const chosenUsername = document.getElementById('username-input').value.trim();
+          
+          if (chosenUsername.length < 3) {
+            alert('Username must be at least 3 characters long.');
+            return;
+          }
+          
+          try {
+            // Only store username and basic user data
+            await db.ref(`users/${user.uid}`).update({
+              username: chosenUsername,
+              email: user.email,
+              name: user.displayName || '',
+              profilePic: user.photoURL || '',
+              lastLogin: firebase.database.ServerValue.TIMESTAMP
+            });
+            document.getElementById('username-modal').style.display = 'none';
+            resolve(true);
+          } catch (err) {
+            console.error("Error saving username:", err);
+            alert("Failed to save username. Please try again.");
+            resolve(false);
+          }
+        };
+      });
+    } else {
+      // Just update login time for existing users
+      await db.ref(`users/${user.uid}`).update({
+        lastLogin: firebase.database.ServerValue.TIMESTAMP
+      });
+      return true;
+    }
+  } catch (error) {
+    console.error("Error during Google sign in:", error);
+    alert(error.message);
+    return false;
+  }
+};
+
+// Update showUsernamePrompt to only store username
+function showUsernamePrompt(user) {
+  if (hasPromptedForUsername) {
+    return;
+  }
+  
+  hasPromptedForUsername = true;
+  const usernameModal = document.getElementById('username-modal');
+  usernameModal.style.display = 'block';
+  
+  document.getElementById('save-username-btn').onclick = () => {
+    const username = document.getElementById('username-input').value.trim();
+    
+    if (username) {
+      if (username.length < 3 || username.length > 30) {
+        alert('Username must be between 3 and 30 characters');
+        return;
+      }
+
+      // First try to reserve the username
+      firebase.database().ref(`usernames/${username}`).transaction((current) => {
+        if (current === null) {
+          return user.uid;
+        }
+        return; // abort if username exists
+      }).then((result) => {
+        if (result.committed) {
+          // Username was reserved successfully, now update user data
+          return firebase.database().ref(`users/${user.uid}`).update({
+            username: username,
+            email: user.email
+          }).then(() => {
+            usernameModal.style.display = 'none';
+            document.getElementById("login-form").style.display = "none";
+            document.getElementById("signup-form").style.display = "none";
+            
+            // Update UI to show username
+            const userEmailElement = document.getElementById("user-email");
+            if (userEmailElement) {
+              userEmailElement.textContent = username;
+            }
+          });
+        } else {
+          throw new Error('Username already taken');
+        }
+      }).catch(error => {
+        console.error('Error saving username:', error);
+        alert(error.message || 'Error saving username. Please try another.');
+        hasPromptedForUsername = false; // Reset flag on error
+      });
+    } else {
+      alert('Please enter a valid username');
+    }
+  };
+}
+
+// Update auth state change handler to check username consistently
+auth.onAuthStateChanged((user) => {
+  const userEmailElement = document.getElementById("user-email");
+  const notificationBell = document.getElementById("notification-bell");
+  const createPostBtn = document.getElementById("create-post-btn");
+  
+  if (user) {
+    firebase.database().ref('users/' + user.uid).once('value')
+      .then((snapshot) => {
+        const userData = snapshot.val();
+        if (!userData || !userData.username) {
+          showUsernamePrompt(user);
+        } else {
+          // Update UI with existing username
+          if (userEmailElement) {
+            userEmailElement.textContent = userData.username;
+          }
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching user data:", error);
+      });
+    // ...rest of existing auth state change code...
+  } else {
+    // ...existing logout code...
+  }
+});
+
+// ...existing code...
