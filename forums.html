@@ -401,5 +401,121 @@
       </div>
     </div>
 
+<!-- Add this username modal right before the closing body tag -->
+<div id="username-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+  <div class="modal-content" style="background: white; margin: 15% auto; padding: 20px; width: 70%; max-width: 500px; border-radius: 8px;">
+    <h2>Choose a Username</h2>
+    <p>Please choose a username for our forums:</p>
+    <input type="text" id="username-input" placeholder="Username" style="width: 100%; padding: 10px; margin: 15px 0; border: 1px solid #ddd; border-radius: 4px;">
+    <button id="save-username-btn" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Save Username</button>
+  </div>
+</div>
+
+<script>
+  // Replace the Google Sign In Handler with this corrected version
+  function handleGoogleSignIn() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    return firebase.auth().signInWithPopup(provider)
+      .then((result) => {
+        // Get user information
+        const user = result.user;
+        
+        // Check if user already has a profile with username in the database
+        return firebase.database().ref('users/' + user.uid).once('value')
+          .then((snapshot) => {
+            const userData = snapshot.val();
+            
+            if (!userData || !userData.username) {
+              // Show username modal if no username is found
+              document.getElementById('username-modal').style.display = 'block';
+              
+              // Set up event handler for username save button
+              return new Promise((resolve) => {
+                document.getElementById('save-username-btn').onclick = () => {
+                  const chosenUsername = document.getElementById('username-input').value.trim();
+                  
+                  if (chosenUsername.length < 3) {
+                    alert('Username must be at least 3 characters long.');
+                    return;
+                  }
+                  
+                  // Save complete user data including username to correct path
+                  firebase.database().ref('users/' + user.uid).update({
+                    email: user.email,
+                    name: user.displayName || '',
+                    profilePic: user.photoURL || '',
+                    username: chosenUsername,
+                    lastLogin: new Date().toISOString()
+                  })
+                  .then(() => {
+                    document.getElementById('username-modal').style.display = 'none';
+                    resolve(true);
+                  })
+                  .catch(err => {
+                    console.error("Error saving username:", err);
+                    alert("Failed to save username. Please try again.");
+                    resolve(false);
+                  });
+                };
+              });
+            } else {
+              // Update last login time for existing users
+              firebase.database().ref('users/' + user.uid).update({
+                lastLogin: new Date().toISOString()
+              });
+              return true; // User already has a username
+            }
+          });
+      })
+      .then(() => {
+        // Close the forms after successful login
+        document.getElementById('login-form').style.display = 'none';
+        document.getElementById('signup-form').style.display = 'none';
+        return true;
+      })
+      .catch((error) => {
+        console.error("Error during Google sign in:", error);
+        alert(error.message);
+        return false;
+      });
+  }
+
+  // Update Google button event listeners to use the Promise-based handler
+  document.addEventListener('DOMContentLoaded', () => {
+    const loginGoogleBtn = document.querySelector('#login-form .google-login-button');
+    const signupGoogleBtn = document.querySelector('#signup-form .google-login-button');
+
+    if (loginGoogleBtn) {
+      loginGoogleBtn.addEventListener('click', async () => {
+        try {
+          await handleGoogleSignIn();
+        } catch (error) {
+          console.error("Login Google button error:", error);
+        }
+      });
+    }
+
+    if (signupGoogleBtn) {
+      signupGoogleBtn.addEventListener('click', async () => {
+        try {
+          await handleGoogleSignIn();
+        } catch (error) {
+          console.error("Signup Google button error:", error);
+        }
+      });
+    }
+  });
+  
+  // Add event handler to close modal if clicking outside
+  window.addEventListener('click', (event) => {
+    const modal = document.getElementById('username-modal');
+    if (event.target === modal) {
+      // Don't close the modal if clicking outside - username is required
+      // Instead, show a notification
+      alert("Please choose a username to continue");
+    }
+  });
+</script>
+
 </body>
 </html>
