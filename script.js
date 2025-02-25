@@ -11,261 +11,124 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-  firebase.analytics();
-}
+if(typeof firebase !== 'undefined') {
+  const app = firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.database();
+  const analytics = firebase.analytics();
 
-// Global variables
-let currentUser = null;
-let editor = null;
-let replyEditor = null;
-
-// Auth state observer
-firebase.auth().onAuthStateChanged((user) => {
-  if (user) {
-    // User is signed in
-    currentUser = user;
-    document.getElementById('user-email').textContent = user.email;
-    document.getElementById('login-btn').style.display = 'none';
-    document.getElementById('signup-btn').style.display = 'none';
-    document.getElementById('logout-btn').style.display = 'inline-block';
-    document.getElementById('create-post-btn').disabled = false;
-    
-    // Update user record in database
-    updateUserData(user);
-    
-    // Load posts
-    loadPosts();
-  } else {
-    // User is signed out
-    currentUser = null;
-    document.getElementById('user-email').textContent = '';
-    document.getElementById('login-btn').style.display = 'inline-block';
-    document.getElementById('signup-btn').style.display = 'inline-block';
-    document.getElementById('logout-btn').style.display = 'none';
-    document.getElementById('create-post-btn').disabled = true;
-    
-    // Still load posts for non-authenticated users (read-only)
-    loadPosts();
-  }
-});
-
-// Update user data in database
-function updateUserData(user) {
-  // Only update if not already set, to avoid overwriting the username
-  firebase.database().ref('users/' + user.uid).once('value')
-    .then((snapshot) => {
-      if (!snapshot.exists()) {
-        // If user doesn't exist in database yet
-        firebase.database().ref('users/' + user.uid).set({
-          email: user.email,
-          name: user.displayName || '',
-          profilePic: user.photoURL || '',
-          lastLogin: new Date().toISOString()
-        });
-      } else {
-        // Just update last login time
-        firebase.database().ref('users/' + user.uid).update({
-          lastLogin: new Date().toISOString()
-        });
-      }
-    });
-}
-
-// Load posts from all categories
-function loadPosts() {
-  const categories = ['updates', 'issues', 'discussions', 'suggestions'];
+  console.log("Firebase initialized successfully");
   
-  categories.forEach(category => {
-    const previewPostsContainer = document.querySelector(`.category[data-category="${category}"] .preview-posts`);
-    const seeMoreLink = document.querySelector(`.category[data-category="${category}"] .see-more`);
-    
-    // Clear previous posts
-    if (previewPostsContainer) {
-      previewPostsContainer.innerHTML = '';
+  const signupBtn = document.getElementById("signup-btn");
+  const loginBtn = document.getElementById("login-btn");
+  const logoutBtn = document.getElementById("logout-btn");
+  const postBtn = document.getElementById("post-btn");
+  const postsSection = document.getElementById("posts");
+  const newPostSection = document.getElementById("new-post");
+  const backBtn = document.getElementById("back-btn");
+  const postDetailsSection = document.getElementById("post-details");
+  const postContentDiv = document.getElementById("post-content");
+  const repliesDiv = document.getElementById("replies");
+  const replyText = document.getElementById("reply-text");
+  const replyBtn = document.getElementById("reply-btn");
+  const createPostBtn = document.getElementById("create-post-btn");
+  const newPostModal = document.getElementById("new-post-modal");
+
+  let currentPostId = null;
+  let currentCategory = null;
+  let hasPromptedForUsername = false; // Add this at the top with other global variables
+
+  // Initialize Quill editors
+  const postQuill = new Quill('#new-post-editor', {
+    theme: 'snow',
+    modules: {
+      toolbar: [
+        ['bold', 'italic', 'underline', 'strike'],
+        ['blockquote', 'code-block'],
+        [{ 'header': 1 }, { 'header': 2 }],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'script': 'sub'}, { 'script': 'super' }],
+        [{ 'indent': '-1'}, { 'indent': '+1' }],
+        [{ 'size': ['small', false, 'large', 'huge'] }],
+        ['link', 'image'],
+        [{ 'color': [] }, { 'background': [] }],
+        [{ 'align': [] }]
+      ]
     }
+  });
+
+  const replyQuill = new Quill('#reply-editor', {
+    theme: 'snow',
+    placeholder: 'Write your reply...',
+    modules: {
+      toolbar: [
+        ['bold', 'italic', 'underline'],
+        ['link', 'image'],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'align': [] }]
+      ]
+    }
+  });
+
+  // Forum Guidelines Popup Handler
+  document.addEventListener('DOMContentLoaded', () => {
+    const guidelinesPopup = document.getElementById('guidelines-popup');
+    const understandBtn = document.getElementById('understand-btn');
     
-    // Get posts for this category
-    firebase.database().ref(`posts/${category}`).limitToLast(3).once('value')
-      .then(snapshot => {
-        const posts = [];
-        snapshot.forEach(childSnapshot => {
-          const post = childSnapshot.val();
-          post.id = childSnapshot.key;
-          post.category = category;
-          posts.push(post);
-        });
+    // Check if user has already accepted guidelines
+    const hasAcceptedGuidelines = localStorage.getItem('acceptedForumGuidelines');
+    
+    if (!hasAcceptedGuidelines && guidelinesPopup) {
+        guidelinesPopup.style.display = 'flex';
         
-        // Update the "See all" count
-        if (seeMoreLink) {
-          seeMoreLink.textContent = `See all (${snapshot.numChildren()})`;
-        }
-        
-        // Display the posts in reverse order (newest first)
-        posts.reverse().forEach(post => {
-          if (previewPostsContainer) {
-            displayPostPreview(post, previewPostsContainer);
-          }
+        understandBtn.addEventListener('click', () => {
+            guidelinesPopup.style.display = 'none';
+            localStorage.setItem('acceptedForumGuidelines', 'true');
         });
-      })
-      .catch(error => {
-        console.error(`Error loading ${category} posts:`, error);
-      });
+    }
   });
-}
 
-// Display post preview
-function displayPostPreview(post, container) {
-  const postEl = document.createElement('div');
-  postEl.className = 'post-preview';
-  postEl.dataset.id = post.id;
-  postEl.dataset.category = post.category;
-  
-  // Get author info
-  firebase.database().ref(`users/${post.authorId}`).once('value')
-    .then(snapshot => {
-      const author = snapshot.val() || { username: 'Unknown', profilePic: '' };
-      
-      postEl.innerHTML = `
-        <div class="post-header">
-          <img class="author-pic" src="${author.profilePic || 'default-avatar.png'}" alt="Profile">
-          <div class="post-meta">
-            <span class="author-name">${author.username || author.name || 'Anonymous'}</span>
-            <span class="post-date">${new Date(post.timestamp).toLocaleString()}</span>
-          </div>
-        </div>
-        <div class="post-title">${post.title}</div>
-        <div class="post-stats">
-          <span>${post.replyCount || 0} replies</span>
-          <span>${post.viewCount || 0} views</span>
-        </div>
-      `;
-      
-      // Add click event to view post details
-      postEl.addEventListener('click', () => {
-        viewPostDetails(post.id, post.category);
-      });
-      
-      container.appendChild(postEl);
-    });
-}
-
-// Create a new post
-document.getElementById('post-btn').addEventListener('click', () => {
-  if (!currentUser) {
-    showLoginPrompt();
-    return;
-  }
-  
-  const content = editor.root.innerHTML;
-  if (content.trim() === '<p><br></p>' || content.trim() === '') {
-    alert('Please enter post content.');
-    return;
-  }
-  
-  // Extract title from the first line of content
-  const div = document.createElement('div');
-  div.innerHTML = content;
-  const title = div.textContent.split('\n')[0].trim().substring(0, 100);
-  
-  const category = document.getElementById('category-select').value;
-  
-  // Create post in database
-  const newPostRef = firebase.database().ref(`posts/${category}`).push();
-  
-  newPostRef.set({
-    title: title,
-    content: content,
-    authorId: currentUser.uid,
-    timestamp: new Date().toISOString(),
-    replyCount: 0,
-    viewCount: 0
-  })
-  .then(() => {
-    // Also update category data
-    return firebase.database().ref(`categories/${category}`).update({
-      lastPostId: newPostRef.key,
-      lastPostTimestamp: new Date().toISOString(),
-      postCount: firebase.database.ServerValue.increment(1)
-    });
-  })
-  .then(() => {
-    // Close modal and reload posts
-    document.getElementById('new-post-modal').style.display = 'none';
-    editor.root.innerHTML = '';
-    loadPosts();
-  })
-  .catch(error => {
-    console.error("Error creating post:", error);
-    alert("Failed to create post: " + error.message);
+  // Signup Functionality
+  signupBtn.addEventListener("click", () => {
+    document.getElementById("signup-form").style.display = "flex";
   });
-});
 
-// Additional event listeners and functions for forms, modals, and post interactions
-// ...
-
-// Initialize Quill editors when needed
-document.getElementById('create-post-btn').addEventListener('click', () => {
-  if (!currentUser) {
-    showLoginPrompt();
-    return;
-  }
-  
-  document.getElementById('new-post-modal').style.display = 'block';
-  
-  if (!editor) {
-    editor = new Quill('#new-post-editor', {
-      theme: 'snow',
-      placeholder: 'Write your post here...',
-      modules: {
-        toolbar: [
-          [{ 'header': [1, 2, 3, false] }],
-          ['bold', 'italic', 'underline'],
-          ['link', 'image'],
-          ['clean']
-        ]
-      }
-    });
-  }
-});
-
-// Show login prompt for unauthenticated users
-function showLoginPrompt() {
-  const prompt = document.getElementById('login-prompt');
-  prompt.style.display = 'block';
-  
-  // Hide after 3 seconds
-  setTimeout(() => {
-    prompt.style.display = 'none';
-  }, 3000);
-  
-  // Add click handler for the login button
-  const loginBtn = prompt.querySelector('.inline-login-btn');
-  if (loginBtn) {
-    loginBtn.onclick = () => {
-      document.getElementById('login-form').style.display = 'flex';
-      prompt.style.display = 'none';
-    };
-  }
-}
-
-// Initialize event listeners when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-  // Login form
-  document.getElementById('login-btn').addEventListener('click', () => {
-    document.getElementById('login-form').style.display = 'flex';
-  });
-  
-  // Signup form
-  document.getElementById('signup-btn').addEventListener('click', () => {
-    document.getElementById('signup-form').style.display = 'flex';
-  });
-  
-  // Logout functionality
-  document.getElementById('logout-btn').addEventListener('click', () => {
-    firebase.auth().signOut();
-  });
+  // Update the signup handler
+  document.getElementById("signup-submit").addEventListener("click", () => {
+    const email = document.getElementById("signup-email").value;
+    const password = document.getElementById("signup-password").value;
+    
+    auth.createUserWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+            const user = userCredential.user;
+            
+            // First create the user data
+            return db.ref(`users/${user.uid}`).set({
+                email: user.email,
+                createdAt: firebase.database.ServerValue.TIMESTAMP
+            }).then(() => {
+                // Then try to increment the counter
+                return db.ref('metrics/registeredUsers').transaction((currentValue) => {
+                    return (currentValue || 0) + 1;
+                });
+            }).catch(error => {
+                // If counter update fails, at least the user is created
+                console.warn("Counter update failed:", error);
+                return Promise.resolve();
+            });
+        })
+        .then(() => {
+            document.getElementById("signup-form").style.display = "none";
+            alert("User signed up successfully!");
+            signupBtn.style.display = "none";
+            loginBtn.style.display = "none";
+            logoutBtn.style.display = "inline-block";
+            newPostSection.style.display = "block";
+        })
+        .catch((error) => {
+            console.error("Error in signup:", error);
+            alert(error.message);
+        });
 });
 
 // Add this new function to sync the users count
@@ -1443,6 +1306,7 @@ document.head.insertAdjacentHTML('beforeend', `
     }
   </style>
 `);
+}
 
 function updateCategoryCount(category, count) {
   const seeMoreBtn = document.querySelector(`[data-category="${category}"] .see-more`);
