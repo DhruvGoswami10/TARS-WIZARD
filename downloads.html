@@ -62,7 +62,7 @@
                         <p class="text-body">Download this file to ask questions and make movements with voice.</p>
                     </div>
                 </div>
-                <button type="button" class="button" onclick="downloadFile('downloads/voice commands.zip')">
+                <button type="button" class="button" onclick="downloadFile('downloads/voice-commands.zip')">
                     <span class="button__text">Download</span>
                     <span class="button__icon">
                         <svg class="svg" data-name="Layer 2" id="bdd05811-e15d-428c-bb53-8661459f9307" viewBox="0 0 35 35" xmlns="http://www.w3.org/2000/svg">
@@ -117,7 +117,7 @@
 
         <div class="download-section">
             <div class="info-cards-grid">
-                <div class="info-card info-red" onclick="window.location.href='https://drive.google.com/drive/folders/1JkQSiaHRGeOVfGtclAxc8S-cPtWUtZwQ?usp=drive_link'">
+                <div class="info-card info-red" onclick="window.location.href='https://www.youtube.com/playlist?list=PL0_krZC_VuISxMFy1NxpuYmY5PP7NPuUr'">
                     <p class="info-tip">Assembly Guide</p>
                     <p class="info-text">Required to assemble your sarcastic robot</p>
                 </div>
@@ -491,36 +491,22 @@
         loginForm.style.display = 'flex';
       });
 
-      // Google Sign In Handler
-      function handleGoogleSignIn() {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        firebase.auth().signInWithPopup(provider)
-            .then((result) => {
-                const user = result.user;
-                // Only try to save to database if Firebase is fully initialized
-                if (firebase.database) {
-                    firebase.database().ref('users/' + user.uid).set({
-                        email: user.email,
-                        name: user.displayName,
-                        profilePic: user.photoURL
-                    }).catch(error => {
-                        console.log('Database write skipped:', error.message);
-                    });
-                }
-                
-                // Close the forms regardless of database success
-                loginForm.style.display = 'none';
-                signupForm.style.display = 'none';
-            })
-            .catch((error) => {
-                console.error("Error during Google sign in:", error);
-                alert(error.message);
-            });
-    }
-
       // Add click handlers for Google sign-in
-      loginGoogleBtn.addEventListener('click', handleGoogleSignIn);
-      signupGoogleBtn.addEventListener('click', handleGoogleSignIn);
+      loginGoogleBtn.addEventListener('click', async () => {
+        try {
+          await window.handleGoogleSignIn();
+        } catch (error) {
+          console.error("Login Google button error:", error);
+        }
+      });
+
+      signupGoogleBtn.addEventListener('click', async () => {
+        try {
+          await window.handleGoogleSignIn();
+        } catch (error) {
+          console.error("Signup Google button error:", error);
+        }
+      });
     </script>
 
     <script>
@@ -640,7 +626,7 @@
     <div id="terms-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
       <div class="modal-content" style="background: white; margin: 15% auto; padding: 20px; width: 70%; max-width: 700px; border-radius: 8px;">
         <h2>Terms and Conditions</h2>
-        <div style="max-height: 400px; overflow-y: auto; margin: 20px 0;">
+        <div style="max-height: 400px; overflow-y: auto; margin: 20px 0;"></div>
           <p>1. By using TARS AI, you agree to comply with all applicable laws and regulations.</p>
           <p>2. Users are responsible for maintaining the confidentiality of their account credentials.</p>
           <p>3. The content provided through TARS AI is for personal, non-commercial use only.</p>
