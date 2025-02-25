@@ -112,7 +112,7 @@ if(typeof firebase !== 'undefined') {
             const user = userCredential.user;
             
             // First create the user data
-            return db.ref(`users/${user.uid}`).set({
+            return db.ref(`users/${user.uid}`).update({
                 email: user.email,
                 createdAt: firebase.database.ServerValue.TIMESTAMP
             }).then(() => {
