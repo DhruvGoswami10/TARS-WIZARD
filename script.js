@@ -17,6 +17,15 @@ if(typeof firebase !== 'undefined') {
   const db = firebase.database();
   const analytics = firebase.analytics();
 
+  // Set authentication state persistence
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+    .then(() => {
+      console.log("Firebase authentication state persistence set to LOCAL");
+    })
+    .catch((error) => {
+      console.error("Error setting authentication state persistence:", error);
+    });
+
   console.log("Firebase initialized successfully");
   
   const signupBtn = document.getElementById("signup-btn");
