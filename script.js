@@ -1774,12 +1774,11 @@ function showUsernamePrompt(user) {
             username: username,
             email: user.email
           }).then(() => {
+            // Update UI and close modals
             usernameModal.style.display = 'none';
             document.getElementById("login-form").style.display = "none";
             document.getElementById("signup-form").style.display = "none";
             
-            // Update UI to show username
-            const userEmailElement = document.getElementById("user-email");
             if (userEmailElement) {
               userEmailElement.textContent = username;
             }
