@@ -17,15 +17,6 @@ if(typeof firebase !== 'undefined') {
   const db = firebase.database();
   const analytics = firebase.analytics();
 
-  // Set authentication state persistence
-  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-    .then(() => {
-      console.log("Firebase authentication state persistence set to LOCAL");
-    })
-    .catch((error) => {
-      console.error("Error setting authentication state persistence:", error);
-    });
-
   console.log("Firebase initialized successfully");
   
   const signupBtn = document.getElementById("signup-btn");
@@ -112,7 +103,7 @@ if(typeof firebase !== 'undefined') {
             const user = userCredential.user;
             
             // First create the user data
-            return db.ref(`users/${user.uid}`).update({
+            return db.ref(`users/${user.uid}`).set({
                 email: user.email,
                 createdAt: firebase.database.ServerValue.TIMESTAMP
             }).then(() => {
@@ -217,7 +208,8 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
             // Username was reserved successfully, now update user data
             return firebase.database().ref(`users/${user.uid}`).update({
               username: username,
-              email: user.email
+              email: user.email,
+              hasSetUsername: true // Add this flag to user data
             }).then(() => {
               usernameModal.style.display = 'none';
               document.getElementById("login-form").style.display = "none";
@@ -258,32 +250,58 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     const createPostBtn = document.getElementById("create-post-btn");
     
     if (user) {
-      firebase.database().ref('users/' + user.uid).once('value')
+      // Get the existing user data first
+      firebase.database().ref(`users/${user.uid}`).once('value')
+        .then((snapshot) => {
+          const existingData = snapshot.val() || {};
+          
+          // Only update non-username fields if username exists
+          if (existingData.username) {
+            // Update last login while preserving username and other data
+            return firebase.database().ref(`users/${user.uid}`).update({
+              lastLogin: firebase.database.ServerValue.TIMESTAMP,
+              email: user.email || existingData.email,
+              name: user.displayName || existingData.name,
+              profilePic: user.photoURL || existingData.profilePic
+            });
+          } else if (!hasPromptedForUsername) {
+            // Show username prompt if no username exists
+            showUsernamePrompt(user);
+          }
+
+          return Promise.resolve();
+        })
+        .then(() => {
+          // Refresh the UI with the current user data
+          return firebase.database().ref(`users/${user.uid}`).once('value');
+        })
         .then((snapshot) => {
           const userData = snapshot.val();
-          // Only show username prompt if they haven't set one and haven't been prompted yet
-          if (!userData?.username && !hasPromptedForUsername) {
-            showUsernamePrompt(user);
-          } else if (userData?.username) {
-            // Update UI with existing username
-            const userEmailElement = document.getElementById("user-email");
-            if (userEmailElement) {
-              userEmailElement.textContent = userData.username;
-            }
+          if (userData?.username) {
+            userEmailElement.style.display = "inline-block";
+            userEmailElement.textContent = userData.username;
+          } else {
+            userEmailElement.style.display = "inline-block";
+            userEmailElement.textContent = user.email;
           }
+
+          // Show authenticated UI elements
+          logoutBtn.style.display = "inline-block";
+          loginBtn.style.display = "none";
+          signupBtn.style.display = "none";
+          notificationBell.style.display = "flex";
+          createPostBtn.style.display = "block";
+          loadNotifications();
         })
         .catch((error) => {
-          console.error("Error fetching user data:", error);
+          console.error("Error handling auth state change:", error);
+          // Fallback to email display
+          userEmailElement.style.display = "inline-block";
+          userEmailElement.textContent = user.email;
         });
-      logoutBtn.style.display = "inline-block";
-      loginBtn.style.display = "none";
-      signupBtn.style.display = "none";
-      userEmailElement.style.display = "inline-block";
-      userEmailElement.textContent = user.email;
-      notificationBell.style.display = "flex";
-      loadNotifications();
-      createPostBtn.style.display = "block";
     } else {
+      // Reset UI elements for logged out state
+      hasPromptedForUsername = false;
       logoutBtn.style.display = "none";
       loginBtn.style.display = "inline-block";
       signupBtn.style.display = "inline-block";
@@ -294,25 +312,6 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     }
     
     loadAllCategoryPreviews();
-
-    const replyEditor = document.getElementById('reply-editor');
-    const replyBtn = document.getElementById('reply-btn');
-    const loginPrompt = document.querySelector('.login-prompt');
-    
-    if (user) {
-        if (replyEditor && replyBtn) {
-            replyEditor.style.display = 'block';
-            replyBtn.style.display = 'block';
-        }
-        if (loginPrompt) {
-            loginPrompt.remove();
-        }
-    } else {
-        if (replyEditor && replyBtn) {
-            replyEditor.style.display = 'none';
-            replyBtn.style.display = 'none';
-        }
-    }
   });
 
   function loadPosts(loggedInUserId) {
@@ -1571,372 +1570,3 @@ function createPostElement(post, category, userEmail) {
 
   return postDiv;
 }
-
-// Make Google Sign In globally available immediately after Firebase init
-window.handleGoogleSignIn = async function() {
-  if (!auth) {
-    throw new Error('Firebase Auth is not initialized');
-  }
-  try {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    const result = await auth.signInWithPopup(provider);
-    const user = result.user;
-    
-    // Create/update user data
-    await db.ref(`users/${user.uid}`).update({
-      email: user.email,
-      name: user.displayName,
-      profilePic: user.photoURL,
-      lastLogin: firebase.database.ServerValue.TIMESTAMP
-    });
-
-    // Check for username
-    const userData = (await db.ref(`users/${user.uid}`).once('value')).val();
-    if (!userData?.username) {
-      showUsernamePrompt(user);
-    } else {
-      // Close auth forms if username exists
-      document.querySelectorAll('.auth-modal').forEach(modal => {
-        modal.style.display = 'none';
-      });
-    }
-
-    return true;
-  } catch (error) {
-    console.error("Error during Google sign in:", error);
-    alert(error.message);
-    return false;
-  }
-};
-
-// Signal that Google Sign In is ready
-window.googleSignInReady = true;
-document.dispatchEvent(new Event('googleSignInReady'));
-
-// Make handleGoogleSignIn globally available immediately after Firebase init
-window.handleGoogleSignIn = async function() {
-  if (!firebase.auth) {
-    throw new Error('Firebase Auth is not initialized');
-  }
-
-  try {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    const result = await auth.signInWithPopup(provider);
-    const user = result.user;
-    
-    // Create/update user data
-    await db.ref(`users/${user.uid}`).update({
-      email: user.email,
-      name: user.displayName,
-      profilePic: user.photoURL,
-      lastLogin: firebase.database.ServerValue.TIMESTAMP
-    });
-
-    // Check for username
-    const userData = (await db.ref(`users/${user.uid}`).once('value')).val();
-    if (!userData?.username) {
-      // Show username modal if no username is found
-      document.getElementById('username-modal').style.display = 'block';
-      
-      // Set up event handler for username save button
-      return new Promise((resolve) => {
-        document.getElementById('save-username-btn').onclick = async () => {
-          const chosenUsername = document.getElementById('username-input').value.trim();
-          
-          if (chosenUsername.length < 3) {
-            alert('Username must be at least 3 characters long.');
-            return;
-          }
-          
-          try {
-            // Save complete user data including username to correct path
-            await firebase.database().ref('users/' + user.uid).update({
-              email: user.email,
-              name: user.displayName || '',
-              profilePic: user.photoURL || '',
-              username: chosenUsername
-            });
-            document.getElementById('username-modal').style.display = 'none';
-            resolve(true);
-          } catch (err) {
-            console.error("Error saving username:", err);
-            alert("Failed to save username. Please try again.");
-            resolve(false);
-          }
-        };
-      });
-    } else {
-      // Update last login time for existing users
-      await firebase.database().ref('users/' + user.uid).update({
-        lastLogin: new Date().toISOString()
-      });
-      return true; // User already has a username
-    }
-  } catch (error) {
-    console.error("Error during Google sign in:", error);
-    alert(error.message);
-    return false;
-  } finally {
-    googleSignInInProgress = false;
-  }
-};
-
-// ...existing code...
-
-// Update Google Sign In handler to only check username
-window.handleGoogleSignIn = async function() {
-  if (!firebase.auth) {
-    throw new Error('Firebase Auth is not initialized');
-  }
-
-  try {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    const result = await auth.signInWithPopup(provider);
-    const user = result.user;
-    
-    // First check if username exists
-    const userData = (await db.ref(`users/${user.uid}`).once('value')).val();
-    
-    if (!userData || !userData.username) {
-      // Show username modal if no username is found
-      document.getElementById('username-modal').style.display = 'block';
-      
-      return new Promise((resolve) => {
-        document.getElementById('save-username-btn').onclick = async () => {
-          const chosenUsername = document.getElementById('username-input').value.trim();
-          
-          if (chosenUsername.length < 3) {
-            alert('Username must be at least 3 characters long.');
-            return;
-          }
-          
-          try {
-            // Only store username and basic user data
-            await db.ref(`users/${user.uid}`).update({
-              username: chosenUsername,
-              email: user.email,
-              name: user.displayName || '',
-              profilePic: user.photoURL || '',
-              lastLogin: firebase.database.ServerValue.TIMESTAMP
-            });
-            document.getElementById('username-modal').style.display = 'none';
-            resolve(true);
-          } catch (err) {
-            console.error("Error saving username:", err);
-            alert("Failed to save username. Please try again.");
-            resolve(false);
-          }
-        };
-      });
-    } else {
-      // Just update login time for existing users
-      await db.ref(`users/${user.uid}`).update({
-        lastLogin: firebase.database.ServerValue.TIMESTAMP
-      });
-      return true;
-    }
-  } catch (error) {
-    console.error("Error during Google sign in:", error);
-    alert(error.message);
-    return false;
-  }
-};
-
-// Update showUsernamePrompt to only store username
-function showUsernamePrompt(user) {
-  if (hasPromptedForUsername) {
-    return;
-  }
-  
-  hasPromptedForUsername = true;
-  const usernameModal = document.getElementById('username-modal');
-  usernameModal.style.display = 'block';
-  
-  document.getElementById('save-username-btn').onclick = () => {
-    const username = document.getElementById('username-input').value.trim();
-    
-    if (username) {
-      if (username.length < 3 || username.length > 30) {
-        alert('Username must be between 3 and 30 characters');
-        return;
-      }
-
-      // First try to reserve the username
-      firebase.database().ref(`usernames/${username}`).transaction((current) => {
-        if (current === null) {
-          return user.uid;
-        }
-        return; // abort if username exists
-      }).then((result) => {
-        if (result.committed) {
-          // Username was reserved successfully, now update user data
-          return firebase.database().ref(`users/${user.uid}`).update({
-            username: username,
-            email: user.email
-          }).then(() => {
-            // Update UI and close modals
-            usernameModal.style.display = 'none';
-            document.getElementById("login-form").style.display = "none";
-            document.getElementById("signup-form").style.display = "none";
-            
-            if (userEmailElement) {
-              userEmailElement.textContent = username;
-            }
-            hasPromptedForUsername = true; // Prevent further prompts
-          });
-        } else {
-          throw new Error('Username already taken');
-        }
-      }).catch(error => {
-        console.error('Error saving username:', error);
-        alert(error.message || 'Error saving username. Please try another.');
-        hasPromptedForUsername = false; // Reset flag on error
-      });
-    } else {
-      alert('Please enter a valid username');
-    }
-  };
-}
-
-// Update auth state change handler to check username consistently
-auth.onAuthStateChanged((user) => {
-  const userEmailElement = document.getElementById("user-email");
-  const notificationBell = document.getElementById("notification-bell");
-  const createPostBtn = document.getElementById("create-post-btn");
-  
-  if (user) {
-    firebase.database().ref('users/' + user.uid).once('value')
-      .then((snapshot) => {
-        const userData = snapshot.val();
-        if (!userData || !userData.username) {
-          showUsernamePrompt(user);
-        } else {
-          // Update UI with existing username
-          if (userEmailElement) {
-            userEmailElement.textContent = userData.username;
-          }
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching user data:", error);
-      });
-    // ...rest of existing auth state change code...
-  } else {
-    // ...existing logout code...
-  }
-});
-
-// ...existing code...
-
-// Update auth state change handler
-auth.onAuthStateChanged((user) => {
-  const userEmailElement = document.getElementById("user-email");
-  const notificationBell = document.getElementById("notification-bell");
-  const createPostBtn = document.getElementById("create-post-btn");
-  
-  if (user) {
-    // Always check database first for existing username
-    firebase.database().ref(`users/${user.uid}`).once('value')
-      .then((snapshot) => {
-        const userData = snapshot.val();
-        
-        if (userData && userData.username) {
-          // Username exists, display it and skip prompt
-          userEmailElement.style.display = "inline-block";
-          userEmailElement.textContent = userData.username;
-          hasPromptedForUsername = true; // Prevent further prompts
-        } else {
-          // Only show username prompt if no username exists
-          showUsernamePrompt(user);
-        }
-
-        // Show authenticated UI elements
-        logoutBtn.style.display = "inline-block";
-        loginBtn.style.display = "none";
-        signupBtn.style.display = "none";
-        notificationBell.style.display = "flex";
-        createPostBtn.style.display = "block";
-        loadNotifications();
-      })
-      .catch((error) => {
-        console.error("Error fetching user data:", error);
-        // Fallback to email display
-        userEmailElement.style.display = "inline-block";
-        userEmailElement.textContent = user.email;
-      });
-  } else {
-    // Reset all UI elements for logged out state
-    hasPromptedForUsername = false; // Reset prompt flag
-    logoutBtn.style.display = "none";
-    loginBtn.style.display = "inline-block";
-    signupBtn.style.display = "inline-block";
-    userEmailElement.style.display = "none";
-    userEmailElement.textContent = "";
-    notificationBell.style.display = "none";
-    createPostBtn.style.display = "none";
-  }
-  
-  loadAllCategoryPreviews();
-});
-
-// Update showUsernamePrompt to handle the modal more reliably
-function showUsernamePrompt(user) {
-  const usernameModal = document.getElementById('username-modal');
-  const userEmailElement = document.getElementById("user-email");
-  
-  // Show the modal
-  usernameModal.style.display = 'block';
-  
-  document.getElementById('save-username-btn').onclick = () => {
-    const username = document.getElementById('username-input').value.trim();
-    
-    if (username) {
-      if (username.length < 3 || username.length > 30) {
-        alert('Username must be between 3 and 30 characters');
-        return;
-      }
-
-      // First try to reserve the username
-      firebase.database().ref(`usernames/${username}`).transaction((current) => {
-        if (current === null) {
-          return user.uid;
-        }
-        return; // abort if username exists
-      }).then((result) => {
-        if (result.committed) {
-          // Username was reserved successfully, now update user data
-          return firebase.database().ref(`users/${user.uid}`).update({
-            username: username,
-            email: user.email
-          }).then(() => {
-            // Update UI and close modals
-            usernameModal.style.display = 'none';
-            document.getElementById("login-form").style.display = "none";
-            document.getElementById("signup-form").style.display = "none";
-            
-            if (userEmailElement) {
-              userEmailElement.textContent = username;
-            }
-            hasPromptedForUsername = true; // Prevent further prompts
-          });
-        } else {
-          throw new Error('Username already taken');
-        }
-      }).catch(error => {
-        console.error('Error saving username:', error);
-        alert(error.message || 'Error saving username. Please try another.');
-      });
-    } else {
-      alert('Please enter a valid username');
-    }
-  };
-
-  // Prevent closing modal by clicking outside - username is required
-  window.onclick = (event) => {
-    if (event.target === usernameModal) {
-      alert('Please choose a username to continue');
-    }
-  };
-}
-
-// ...existing code...
