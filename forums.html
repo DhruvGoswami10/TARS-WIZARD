@@ -394,7 +394,7 @@
       const snapshot = await firebase.database().ref('users/' + user.uid).once('value');
       const userData = snapshot.val();
       
-      if (!userData || !userData.username) {
+      if (!userData?.hasSetUsername) {
         // Show username modal if no username is found
         document.getElementById('username-modal').style.display = 'block';
         
@@ -415,6 +415,7 @@
                 name: user.displayName || '',
                 profilePic: user.photoURL || '',
                 username: chosenUsername,
+                hasSetUsername: true, // Set the flag to true
                 lastLogin: new Date().toISOString()
               });
               document.getElementById('username-modal').style.display = 'none';
