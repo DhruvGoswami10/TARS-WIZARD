@@ -258,38 +258,32 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     const createPostBtn = document.getElementById("create-post-btn");
     
     if (user) {
-      // First check for existing username in database
-      firebase.database().ref(`users/${user.uid}`).once('value')
+      firebase.database().ref('users/' + user.uid).once('value')
         .then((snapshot) => {
           const userData = snapshot.val();
-          
-          if (userData && userData.username) {
-            // Username exists, display it
+          // Only show username prompt if they haven't set one and haven't been prompted yet
+          if (!userData?.username && !hasPromptedForUsername) {
+            showUsernamePrompt(user);
+          } else if (userData?.username) {
+            // Update UI with existing username
+            const userEmailElement = document.getElementById("user-email");
             if (userEmailElement) {
               userEmailElement.textContent = userData.username;
             }
-            // Show authenticated UI
-            logoutBtn.style.display = "inline-block";
-            loginBtn.style.display = "none";
-            signupBtn.style.display = "none";
-            userEmailElement.style.display = "inline-block";
-            notificationBell.style.display = "flex";
-            createPostBtn.style.display = "block";
-            loadNotifications();
-          } else {
-            // No username found, prompt for one
-            showUsernamePrompt(user);
           }
         })
         .catch((error) => {
           console.error("Error fetching user data:", error);
-          // Fallback to email display on error
-          if (userEmailElement) {
-            userEmailElement.textContent = user.email;
-          }
         });
+      logoutBtn.style.display = "inline-block";
+      loginBtn.style.display = "none";
+      signupBtn.style.display = "none";
+      userEmailElement.style.display = "inline-block";
+      userEmailElement.textContent = user.email;
+      notificationBell.style.display = "flex";
+      loadNotifications();
+      createPostBtn.style.display = "block";
     } else {
-      // User is logged out, show unauthenticated UI
       logoutBtn.style.display = "none";
       loginBtn.style.display = "inline-block";
       signupBtn.style.display = "inline-block";
@@ -300,6 +294,25 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     }
     
     loadAllCategoryPreviews();
+
+    const replyEditor = document.getElementById('reply-editor');
+    const replyBtn = document.getElementById('reply-btn');
+    const loginPrompt = document.querySelector('.login-prompt');
+    
+    if (user) {
+        if (replyEditor && replyBtn) {
+            replyEditor.style.display = 'block';
+            replyBtn.style.display = 'block';
+        }
+        if (loginPrompt) {
+            loginPrompt.remove();
+        }
+    } else {
+        if (replyEditor && replyBtn) {
+            replyEditor.style.display = 'none';
+            replyBtn.style.display = 'none';
+        }
+    }
   });
 
   function loadPosts(loggedInUserId) {
@@ -1770,6 +1783,7 @@ function showUsernamePrompt(user) {
             if (userEmailElement) {
               userEmailElement.textContent = username;
             }
+            hasPromptedForUsername = true; // Prevent further prompts
           });
         } else {
           throw new Error('Username already taken');
