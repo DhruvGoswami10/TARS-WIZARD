@@ -250,33 +250,24 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     const createPostBtn = document.getElementById("create-post-btn");
     
     if (user) {
-      // Get the existing user data first
+      // Get existing user data first
       firebase.database().ref(`users/${user.uid}`).once('value')
         .then((snapshot) => {
           const existingData = snapshot.val() || {};
           
-          // Only update non-username fields if username exists
+          // If username exists, only update lastLogin
           if (existingData.username) {
-            // Update last login while preserving username and other data
             return firebase.database().ref(`users/${user.uid}`).update({
-              lastLogin: firebase.database.ServerValue.TIMESTAMP,
-              email: user.email || existingData.email,
-              name: user.displayName || existingData.name,
-              profilePic: user.photoURL || existingData.profilePic
-            });
+              lastLogin: firebase.database.ServerValue.TIMESTAMP
+            }).then(() => existingData); // Pass existing data to next then
           } else if (!hasPromptedForUsername) {
             // Show username prompt if no username exists
             showUsernamePrompt(user);
           }
-
-          return Promise.resolve();
+          return existingData;
         })
-        .then(() => {
-          // Refresh the UI with the current user data
-          return firebase.database().ref(`users/${user.uid}`).once('value');
-        })
-        .then((snapshot) => {
-          const userData = snapshot.val();
+        .then((userData) => {
+          // Update UI with user data
           if (userData?.username) {
             userEmailElement.style.display = "inline-block";
             userEmailElement.textContent = userData.username;
@@ -295,12 +286,11 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
         })
         .catch((error) => {
           console.error("Error handling auth state change:", error);
-          // Fallback to email display
           userEmailElement.style.display = "inline-block";
           userEmailElement.textContent = user.email;
         });
     } else {
-      // Reset UI elements for logged out state
+      // Reset UI for logged out state
       hasPromptedForUsername = false;
       logoutBtn.style.display = "none";
       loginBtn.style.display = "inline-block";
