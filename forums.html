@@ -264,48 +264,22 @@
       loginForm.style.display = 'flex';
     });
 
-    // Google Sign In Handler
-    function handleGoogleSignIn() {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      firebase.auth().signInWithPopup(provider)
-        .then((result) => {
-          const user = result.user;
-          // Check for existing username
-          firebase.database().ref('users/' + user.uid).once('value')
-            .then((snapshot) => {
-              if (snapshot.exists() && snapshot.val().username) {
-                // User already has a username, skip modal
-                return;
-              }
-              // Show username modal
-              document.getElementById('username-modal').style.display = 'block';
-              const saveUsernameBtn = document.getElementById('save-username-btn');
-              saveUsernameBtn.onclick = () => {
-                const chosenUsername = document.getElementById('username-input').value.trim();
-                if (chosenUsername.length < 3) {
-                  alert('Username must be at least 3 characters long.');
-                  return;
-                }
-                // Save username to DB
-                firebase.database().ref('users/' + user.uid).update({
-                  email: user.email,
-                  name: user.displayName,
-                  profilePic: user.photoURL,
-                  username: chosenUsername
-                });
-                document.getElementById('username-modal').style.display = 'none';
-              };
-            });
-        })
-        .catch((error) => {
-          console.error("Error during Google sign in:", error);
-          alert(error.message);
-        });
-    }
-
     // Add click handlers for Google sign-in
-    loginGoogleBtn.addEventListener('click', handleGoogleSignIn);
-    signupGoogleBtn.addEventListener('click', handleGoogleSignIn);
+    loginGoogleBtn.addEventListener('click', async () => {
+      try {
+        await window.handleGoogleSignIn();
+      } catch (error) {
+        console.error("Login Google button error:", error);
+      }
+    });
+
+    signupGoogleBtn.addEventListener('click', async () => {
+      try {
+        await window.handleGoogleSignIn();
+      } catch (error) {
+        console.error("Signup Google button error:", error);
+      }
+    });
   </script>
 
   <script>
