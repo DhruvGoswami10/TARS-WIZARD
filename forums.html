@@ -449,7 +449,8 @@
                 };
               });
             } else {
-              // Update last login time for existing users
+              // User already has a username, update last login time
+              console.log("User already has username:", userData.username);
               firebase.database().ref('users/' + user.uid).update({
                 lastLogin: new Date().toISOString()
               });
