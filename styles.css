@@ -688,11 +688,15 @@ body {
   right: -8px;
   background: #ff4444;
   color: white;
-  border-radius: 50%;
-  padding: 2px 6px;
+  border-radius: 50%; /* Perfect circle */
+  padding: 0;
   font-size: 12px;
-  min-width: 14px;
+  min-width: 18px;
+  height: 18px; /* Equal height and width */
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   animation: pulse 1.5s infinite;
 }
 
@@ -751,6 +755,7 @@ body {
   border-bottom: 1px solid #eee;
   cursor: pointer;
   transition: background-color 0.2s;
+  color: #000 !important; /* Force black color */
 }
 
 .notification-item.unread {
@@ -778,11 +783,17 @@ body {
 
 .notification-icon {
   font-size: 1.2em;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .notification-message {
   flex: 1;
   font-size: 0.9em;
+  color: #000 !important; /* Force black color */
 }
 
 .notification-time {
@@ -807,6 +818,14 @@ body {
 
 .clear-notifications button:hover {
   background: #c82333;
+}
+
+.notification-item[data-type="reply"] {
+  border-left: 3px solid #4CAF50;
+}
+
+.notification-item[data-type="upvote"] {
+  border-left: 3px solid #2196F3;
 }
 
 /* ...existing code... */
