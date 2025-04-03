@@ -1530,3 +1530,237 @@ function createPostElement(post, category, userEmail) {
 
   return postDiv;
 }
+
+// Update the addNotification function to include more metadata
+function addNotification(userId, message, type, sourceId) {
+  if (userId === auth.currentUser?.uid) return; // Don't notify yourself
+  
+  db.ref(`users/${userId}/notifications`).push({
+    message,
+    timestamp: firebase.database.ServerValue.TIMESTAMP,
+    type, // 'upvote', 'reply', etc.
+    sourceId, // postId or replyId
+    read: false
+  });
+}
+
+// Update the loadNotifications function
+function loadNotifications() {
+  if (!auth.currentUser) return;
+  
+  const notificationList = document.querySelector('.notification-list');
+  if (!notificationList) return;
+  
+  db.ref(`users/${auth.currentUser.uid}/notifications`)
+    .orderByChild('timestamp')
+    .limitToLast(10)
+    .on('value', (snapshot) => {
+      notificationList.innerHTML = '';
+      const notifications = [];
+      let unreadCount = 0;
+      
+      snapshot.forEach((notif) => {
+        const notification = {
+          key: notif.key,
+          ...notif.val()
+        };
+        notifications.unshift(notification);
+        if (!notification.read) unreadCount++;
+      });
+
+      // Update notification bell badge
+      const bell = document.getElementById('notification-bell');
+      if (unreadCount > 0) {
+        bell.setAttribute('data-count', unreadCount);
+        bell.classList.add('has-notifications');
+      } else {
+        bell.removeAttribute('data-count');
+        bell.classList.remove('has-notifications');
+      }
+
+      // Render notifications
+      notifications.forEach((notif) => {
+        const div = document.createElement('div');
+        div.className = `notification-item ${notif.read ? '' : 'unread'}`;
+        div.dataset.key = notif.key;
+        div.dataset.type = notif.type;
+        div.dataset.sourceId = notif.sourceId;
+        
+        // Add icon based on notification type
+        const icon = notif.type === 'upvote' ? '👍' : 
+                    notif.type === 'reply' ? '💬' : '📢';
+        
+        div.innerHTML = `
+          <span class="notification-icon">${icon}</span>
+          <span class="notification-message">${notif.message}</span>
+          <span class="notification-time">${formatTimestamp(notif.timestamp)}</span>
+        `;
+        
+        // Add click handler to mark as read and navigate
+        div.addEventListener('click', () => handleNotificationClick(notif));
+        
+        notificationList.appendChild(div);
+      });
+    });
+}
+
+// Add this helper function
+function formatTimestamp(timestamp) {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diff = now - date;
+  
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
+  return date.toLocaleDateString();
+}
+
+// Add notification click handler
+function handleNotificationClick(notification) {
+  // Mark as read
+  db.ref(`users/${auth.currentUser.uid}/notifications/${notification.key}/read`)
+    .set(true);
+
+  // Navigate to the relevant content based on type
+  if (notification.sourceId) {
+    if (notification.type === 'reply' || notification.type === 'upvote') {
+      // Find the post and open it
+      db.ref('categories').once('value', (snapshot) => {
+        snapshot.forEach((category) => {
+          const threads = category.child('threads');
+          if (threads.hasChild(notification.sourceId)) {
+            // Found the post, open it
+            openPost(category.key, notification.sourceId);
+            return true;
+          }
+        });
+      });
+    }
+  }
+  
+  // Close the dropdown
+  document.querySelector('.notifications-dropdown').classList.remove('active');
+}
+
+// Update upvote handler to include notifications
+function createUpvoteButton(itemId, category, itemType, currentUpvotes = 0, postId = null) {
+  const upvoteBtn = document.createElement('button');
+  upvoteBtn.className = 'upvote-btn'; // Remove isActive variable reference
+  upvoteBtn.innerHTML = `
+    <div class="upvote-arrow"></div>
+    <span class="upvote-count">${currentUpvotes}</span>
+  `;
+
+  const isReply = itemType === 'reply';
+  const basePath = isReply 
+    ? `categories/${category}/threads/${postId}/replies/${itemId}`
+    : `categories/${category}/threads/${itemId}`;
+
+  if (auth.currentUser) {
+    // Check if user has already upvoted
+    db.ref(`${basePath}/upvotes/${auth.currentUser.uid}`).once('value', (snapshot) => {
+      if (snapshot.exists()) {
+        upvoteBtn.classList.add('active');
+        const countSpan = upvoteBtn.querySelector('.upvote-count');
+        countSpan.textContent = currentUpvotes || 0;
+      }
+    });
+  }
+
+  upvoteBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!auth.currentUser) {
+        alert('Please login to upvote');
+        return;
+    }
+
+    try {
+        const upvoteRef = db.ref(`${basePath}/upvotes/${auth.currentUser.uid}`);
+        const countRef = db.ref(`${basePath}/upvoteCount`);
+        
+        const snapshot = await upvoteRef.once('value');
+        const hasUpvoted = snapshot.exists();
+        
+        await db.ref(basePath).transaction(current => {
+            if (!current) return current;
+            
+            if (hasUpvoted) {
+                // Remove upvote
+                if (current.upvotes) {
+                    delete current.upvotes[auth.currentUser.uid];
+                }
+                current.upvoteCount = (current.upvoteCount || 1) - 1;
+            } else {
+                // Add upvote
+                if (!current.upvotes) current.upvotes = {};
+                current.upvotes[auth.currentUser.uid] = true;
+                current.upvoteCount = (current.upvoteCount || 0) + 1;
+            }
+            return current;
+        });
+
+        // Update button state without reloading
+        upvoteBtn.classList.toggle('active');
+        const countSpan = upvoteBtn.querySelector('.upvote-count');
+        const currentCount = parseInt(countSpan.textContent);
+        countSpan.textContent = hasUpvoted ? currentCount - 1 : currentCount + 1;
+
+        // Handle notification if adding upvote
+        if (!hasUpvoted) {
+            const itemData = (await db.ref(basePath).once('value')).val();
+            const ownerId = isReply ? 
+                await getUserIdByEmail(itemData.user) : 
+                itemData.userId;
+
+            if (ownerId && ownerId !== auth.currentUser.uid) {
+                const message = itemType === 'reply' ?
+                  `${auth.currentUser.email} upvoted your reply` :
+                  `${auth.currentUser.email} upvoted your post`;
+                  
+                addNotification(ownerId, message, 'upvote', itemId);
+            }
+        }
+    } catch (error) {
+        console.error("Error updating upvote:", error);
+    }
+});
+
+return upvoteBtn;
+}
+
+// Update reply handler to include notifications
+replyBtn.addEventListener("click", () => {
+  const content = replyQuill.root.innerHTML;
+  if (content.trim() !== '<p><br></p>') {
+    const user = auth.currentUser;
+    
+    // Get post author ID
+    db.ref(`categories/${currentCategory}/threads/${currentPostId}`)
+      .once('value')
+      .then((snapshot) => {
+        const post = snapshot.val();
+        
+        db.ref(`categories/${currentCategory}/threads/${currentPostId}/replies`).push({
+          content: content,
+          userId: user.uid,
+          timestamp: firebase.database.ServerValue.TIMESTAMP
+        }).then((replyRef) => {
+          // Add notification for post author
+          if (post.userId !== user.uid) {
+            addNotification(
+              post.userId,
+              `${user.email} replied to your post`,
+              'reply',
+              currentPostId
+            );
+          }
+          replyQuill.setText('');
+        });
+      });
+  } else {
+    alert("Reply cannot be empty!");
+  }
+});
