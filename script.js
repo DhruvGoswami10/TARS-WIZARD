@@ -681,10 +681,10 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
 
   function createUpvoteButton(itemId, category, itemType, currentUpvotes = 0, postId = null) {
     const upvoteBtn = document.createElement('button');
-    upvoteBtn.className = 'upvote-btn'; // Remove isActive variable reference
+    upvoteBtn.className = 'upvote-btn';
     upvoteBtn.innerHTML = `
       <div class="upvote-arrow"></div>
-      <span class="upvote-count">${currentUpvotes}</span>
+      <span class="upvote-count">${currentUpvotes || 0}</span>
     `;
   
     const isReply = itemType === 'reply';
@@ -692,15 +692,15 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
       ? `categories/${category}/threads/${postId}/replies/${itemId}`
       : `categories/${category}/threads/${itemId}`;
   
+    // Check if user has already upvoted and update UI accordingly
     if (auth.currentUser) {
-      // Check if user has already upvoted
-      db.ref(`${basePath}/upvotes/${auth.currentUser.uid}`).once('value', (snapshot) => {
-        if (snapshot.exists()) {
-          upvoteBtn.classList.add('active');
-          const countSpan = upvoteBtn.querySelector('.upvote-count');
-          countSpan.textContent = currentUpvotes || 0;
-        }
-      });
+      db.ref(`${basePath}/upvotes/${auth.currentUser.uid}`).once('value')
+        .then(snapshot => {
+          if (snapshot.exists() && snapshot.val() === true) {
+            upvoteBtn.classList.add('active');
+          }
+        })
+        .catch(error => console.error("Error checking upvote status:", error));
     }
   
     upvoteBtn.addEventListener('click', async (e) => {
@@ -708,58 +708,54 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
       e.stopPropagation();
       
       if (!auth.currentUser) {
-          alert('Please login to upvote');
-          return;
+        alert('Please login to upvote');
+        return;
       }
   
       try {
-          const upvoteRef = db.ref(`${basePath}/upvotes/${auth.currentUser.uid}`);
-          const countRef = db.ref(`${basePath}/upvoteCount`);
+        // Get current upvote status
+        const userUpvoteRef = db.ref(`${basePath}/upvotes/${auth.currentUser.uid}`);
+        const snapshot = await userUpvoteRef.once('value');
+        const hasUpvoted = snapshot.exists() && snapshot.val() === true;
+        
+        // Get current upvote count
+        const upvoteCountRef = db.ref(`${basePath}/upvoteCount`);
+        const countSnapshot = await upvoteCountRef.once('value');
+        const currentCount = countSnapshot.exists() ? countSnapshot.val() : 0;
+        
+        // Update upvote status (add or remove)
+        if (hasUpvoted) {
+          // Remove upvote
+          await userUpvoteRef.remove();
+          await upvoteCountRef.set(Math.max(0, currentCount - 1));
+          upvoteBtn.classList.remove('active');
+          upvoteBtn.querySelector('.upvote-count').textContent = Math.max(0, currentCount - 1);
+        } else {
+          // Add upvote
+          await userUpvoteRef.set(true);
+          await upvoteCountRef.set(currentCount + 1);
+          upvoteBtn.classList.add('active');
+          upvoteBtn.querySelector('.upvote-count').textContent = currentCount + 1;
           
-          const snapshot = await upvoteRef.once('value');
-          const hasUpvoted = snapshot.exists();
-          
-          await db.ref(basePath).transaction(current => {
-              if (!current) return current;
-              
-              if (hasUpvoted) {
-                  // Remove upvote
-                  if (current.upvotes) {
-                      delete current.upvotes[auth.currentUser.uid];
-                  }
-                  current.upvoteCount = (current.upvoteCount || 1) - 1;
-              } else {
-                  // Add upvote
-                  if (!current.upvotes) current.upvotes = {};
-                  current.upvotes[auth.currentUser.uid] = true;
-                  current.upvoteCount = (current.upvoteCount || 0) + 1;
-              }
-              return current;
-          });
-  
-          // Update button state without reloading
-          upvoteBtn.classList.toggle('active');
-          const countSpan = upvoteBtn.querySelector('.upvote-count');
-          const currentCount = parseInt(countSpan.textContent);
-          countSpan.textContent = hasUpvoted ? currentCount - 1 : currentCount + 1;
-  
-          // Handle notification if adding upvote
-          if (!hasUpvoted) {
-              const itemData = (await db.ref(basePath).once('value')).val();
-              const ownerId = isReply ? 
-                  await getUserIdByEmail(itemData.user) : 
-                  itemData.userId;
-  
-              if (ownerId && ownerId !== auth.currentUser.uid) {
-                  addNotification(ownerId, `${auth.currentUser.email} upvoted your ${itemType}`);
-              }
+          // Send notification
+          const itemData = (await db.ref(basePath).once('value')).val();
+          if (itemData && itemData.userId && itemData.userId !== auth.currentUser.uid) {
+            const message = `${auth.currentUser.email} upvoted your ${itemType}`;
+            addNotification(
+              itemData.userId,
+              message,
+              'upvote',
+              isReply ? postId : itemId
+            );
           }
+        }
       } catch (error) {
-          console.error("Error updating upvote:", error);
+        console.error("Error updating upvote:", error);
+        alert("Failed to update upvote. Please try again.");
       }
-  });
-  
-  return upvoteBtn;
+    });
+    
+    return upvoteBtn;
   }
   
   // Modify the post creation in loadCategoryPosts function
@@ -836,38 +832,38 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
               e.stopPropagation();
               
               try {
-                const upvoteRef = db.ref(`categories/${category}/threads/${post.key}/upvotes/${auth.currentUser.uid}`);
-                const snapshot = await upvoteRef.once('value');
-                const hasUpvoted = snapshot.exists();
+                const userUpvoteRef = db.ref(`categories/${category}/threads/${post.key}/upvotes/${auth.currentUser.uid}`);
+                const upvoteCountRef = db.ref(`categories/${category}/threads/${post.key}/upvoteCount`);
                 
-                await db.ref(`categories/${category}/threads/${post.key}`).transaction(current => {
-                  if (!current) return current;
+                const snapshot = await userUpvoteRef.once('value');
+                const hasUpvoted = snapshot.exists() && snapshot.val() === true;
+                
+                const countSnapshot = await upvoteCountRef.once('value');
+                const currentCount = countSnapshot.exists() ? countSnapshot.val() : 0;
+                
+                if (hasUpvoted) {
+                  // Remove upvote
+                  await userUpvoteRef.remove();
+                  await upvoteCountRef.set(Math.max(0, currentCount - 1));
+                  upvoteButton.classList.remove('active');
+                  const countSpan = upvoteButton.querySelector('.upvote-count');
+                  countSpan.textContent = Math.max(0, currentCount - 1);
+                } else {
+                  // Add upvote
+                  await userUpvoteRef.set(true);
+                  await upvoteCountRef.set(currentCount + 1);
+                  upvoteButton.classList.add('active');
+                  const countSpan = upvoteButton.querySelector('.upvote-count');
+                  countSpan.textContent = currentCount + 1;
                   
-                  if (hasUpvoted) {
-                    if (current.upvotes) {
-                      delete current.upvotes[auth.currentUser.uid];
-                    }
-                    current.upvoteCount = (current.upvoteCount || 1) - 1;
-                  } else {
-                    if (!current.upvotes) current.upvotes = {};
-                    current.upvotes[auth.currentUser.uid] = true;
-                    current.upvoteCount = (current.upvoteCount || 0) + 1;
+                  // Handle notification
+                  if (post.userId !== auth.currentUser.uid) {
+                    addNotification(post.userId, `${auth.currentUser.email} upvoted your post`, 'upvote', post.key);
                   }
-                  return current;
-                });
-                
-                // Update button state
-                upvoteButton.classList.toggle('active');
-                const countSpan = upvoteButton.querySelector('.upvote-count');
-                const currentCount = parseInt(countSpan.textContent);
-                countSpan.textContent = hasUpvoted ? currentCount - 1 : currentCount + 1;
-                
-                // Handle notification
-                if (!hasUpvoted && post.userId !== auth.currentUser.uid) {
-                  addNotification(post.userId, `${auth.currentUser.email} upvoted your post`);
                 }
               } catch (error) {
                 console.error("Error updating upvote:", error);
+                alert("Failed to update upvote. Please try again.");
               }
             });
           }
@@ -945,38 +941,38 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
               e.stopPropagation();
               
               try {
-                const upvoteRef = db.ref(`categories/${category}/threads/${post.key}/upvotes/${auth.currentUser.uid}`);
-                const snapshot = await upvoteRef.once('value');
-                const hasUpvoted = snapshot.exists();
+                const userUpvoteRef = db.ref(`categories/${category}/threads/${post.key}/upvotes/${auth.currentUser.uid}`);
+                const upvoteCountRef = db.ref(`categories/${category}/threads/${post.key}/upvoteCount`);
                 
-                await db.ref(`categories/${category}/threads/${post.key}`).transaction(current => {
-                  if (!current) return current;
+                const snapshot = await userUpvoteRef.once('value');
+                const hasUpvoted = snapshot.exists() && snapshot.val() === true;
+                
+                const countSnapshot = await upvoteCountRef.once('value');
+                const currentCount = countSnapshot.exists() ? countSnapshot.val() : 0;
+                
+                if (hasUpvoted) {
+                  // Remove upvote
+                  await userUpvoteRef.remove();
+                  await upvoteCountRef.set(Math.max(0, currentCount - 1));
+                  upvoteButton.classList.remove('active');
+                  const countSpan = upvoteButton.querySelector('.upvote-count');
+                  countSpan.textContent = Math.max(0, currentCount - 1);
+                } else {
+                  // Add upvote
+                  await userUpvoteRef.set(true);
+                  await upvoteCountRef.set(currentCount + 1);
+                  upvoteButton.classList.add('active');
+                  const countSpan = upvoteButton.querySelector('.upvote-count');
+                  countSpan.textContent = currentCount + 1;
                   
-                  if (hasUpvoted) {
-                    if (current.upvotes) {
-                      delete current.upvotes[auth.currentUser.uid];
-                    }
-                    current.upvoteCount = (current.upvoteCount || 1) - 1;
-                  } else {
-                    if (!current.upvotes) current.upvotes = {};
-                    current.upvotes[auth.currentUser.uid] = true;
-                    current.upvoteCount = (current.upvoteCount || 0) + 1;
+                  // Handle notification
+                  if (post.userId !== auth.currentUser.uid) {
+                    addNotification(post.userId, `${auth.currentUser.email} upvoted your post`, 'upvote', post.key);
                   }
-                  return current;
-                });
-                
-                // Update button state
-                upvoteButton.classList.toggle('active');
-                const countSpan = upvoteButton.querySelector('.upvote-count');
-                const currentCount = parseInt(countSpan.textContent);
-                countSpan.textContent = hasUpvoted ? currentCount - 1 : currentCount + 1;
-                
-                // Handle notification
-                if (!hasUpvoted && post.userId !== auth.currentUser.uid) {
-                  addNotification(post.userId, `${auth.currentUser.email} upvoted your post`);
                 }
               } catch (error) {
                 console.error("Error updating upvote:", error);
+                alert("Failed to update upvote. Please try again.");
               }
             });
           }
@@ -1096,12 +1092,23 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     return replyDiv;
   }
   
-  function addNotification(userId, message) {
-    db.ref(`users/${userId}/notifications`).push({
-      message: message,
-      timestamp: firebase.database.ServerValue.TIMESTAMP,
-      read: false
-    });
+  function addNotification(userId, message, type, sourceId) {
+    if (!userId || userId === auth.currentUser?.uid) return;
+  
+    try {
+      const notificationData = {
+        message: message,
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+        type: type || 'general',
+        sourceId: sourceId || '',
+        read: false
+      };
+      
+      db.ref(`users/${userId}/notifications`).push(notificationData)
+        .catch(error => console.error("Error adding notification:", error));
+    } catch (error) {
+      console.error("Error in addNotification:", error);
+    }
   }
   
   function loadNotifications() {
@@ -1764,3 +1771,88 @@ replyBtn.addEventListener("click", () => {
     alert("Reply cannot be empty!");
   }
 });
+
+// Update the createUpvoteButton function
+function createUpvoteButton(itemId, category, itemType, currentUpvotes = 0, postId = null) {
+  const upvoteBtn = document.createElement('button');
+  upvoteBtn.className = 'upvote-btn'; // Remove isActive variable reference
+  upvoteBtn.innerHTML = `
+    <div class="upvote-arrow"></div>
+    <span class="upvote-count">${currentUpvotes}</span>
+  `;
+
+  const isReply = itemType === 'reply';
+
+  upvoteBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!auth.currentUser) {
+      alert('Please login to upvote');
+      return;
+    }
+
+    try {
+      const basePath = isReply 
+        ? `categories/${category}/threads/${postId}/replies/${itemId}`
+        : `categories/${category}/threads/${itemId}`;
+
+      // First, check if user has already upvoted
+      const upvoteRef = db.ref(`${basePath}/upvotes/${auth.currentUser.uid}`);
+      const snapshot = await upvoteRef.once('value');
+      const hasUpvoted = snapshot.exists();
+
+      // Update upvote count and user upvote status
+      await db.ref(basePath).update({
+        [`upvotes/${auth.currentUser.uid}`]: hasUpvoted ? null : true,
+        upvoteCount: firebase.database.ServerValue.increment(hasUpvoted ? -1 : 1)
+      });
+
+      // Update UI
+      upvoteBtn.classList.toggle('active');
+      const countSpan = upvoteBtn.querySelector('.upvote-count');
+      const currentCount = parseInt(countSpan.textContent || '0');
+      countSpan.textContent = hasUpvoted ? currentCount - 1 : currentCount + 1;
+
+      // Handle notification
+      if (!hasUpvoted) {
+        const itemSnapshot = await db.ref(basePath).once('value');
+        const itemData = itemSnapshot.val();
+        if (itemData.userId && itemData.userId !== auth.currentUser.uid) {
+          const message = `${auth.currentUser.email} upvoted your ${itemType}`;
+          addNotification(itemData.userId, message, 'upvote', itemId);
+        }
+      }
+    } catch (error) {
+      console.error("Error updating upvote:", error);
+      // Revert UI changes if error occurs
+      upvoteBtn.classList.remove('active');
+    }
+  });
+
+  return upvoteBtn;
+}
+
+// Update the addNotification function
+function addNotification(userId, message, type, sourceId) {
+  if (!userId || userId === auth.currentUser?.uid) return;
+
+  const notificationRef = db.ref(`users/${userId}/notifications`).push();
+  notificationRef.set({
+    message,
+    type,
+    sourceId,
+    timestamp: firebase.database.ServerValue.TIMESTAMP,
+    read: false
+  }).catch(error => {
+    console.error("Error adding notification:", error);
+  });
+}
+
+// Add this helper function for vote count updates
+function updateVoteCount(path) {
+  return db.ref(path).transaction((current) => {
+    if (current === null) return 0;
+    return current;
+  });
+}
