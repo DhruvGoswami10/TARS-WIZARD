@@ -755,7 +755,7 @@ body {
   border-bottom: 1px solid #eee;
   cursor: pointer;
   transition: background-color 0.2s;
-  color: #000 !important; /* Force black color */
+  color: #333 !important; /* Dark text for better readability */
 }
 
 .notification-item.unread {
@@ -793,12 +793,13 @@ body {
 .notification-message {
   flex: 1;
   font-size: 0.9em;
-  color: #000 !important; /* Force black color */
+  color: #333 !important; /* Ensure text color is visible */
 }
 
 .notification-time {
   color: #666;
   font-size: 0.8em;
+  white-space: nowrap; /* Prevent breaking to new line */
 }
 
 .clear-notifications {
@@ -826,6 +827,13 @@ body {
 
 .notification-item[data-type="upvote"] {
   border-left: 3px solid #2196F3;
+}
+
+.no-notifications {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-style: italic;
 }
 
 /* ...existing code... */

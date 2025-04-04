@@ -444,18 +444,47 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     if (content.trim() !== '<p><br></p>') {
       const user = auth.currentUser;
       
-      // Store userId instead of email
-      db.ref(`categories/${currentCategory}/threads/${currentPostId}/replies`).push({
-        content: content,
-        userId: user.uid,  // Changed from user.email to user.uid
-        timestamp: firebase.database.ServerValue.TIMESTAMP,
-        user: user.email // Keep this for backward compatibility
-      }).then(() => {
-        replyQuill.setText('');
-      }).catch(error => {
-        console.error("Error adding reply:", error);
-        alert("Error posting reply");
-      });
+      // Get post author ID
+      db.ref(`categories/${currentCategory}/threads/${currentPostId}`)
+        .once('value')
+        .then((snapshot) => {
+          const post = snapshot.val();
+          
+          // Create and push the reply
+          db.ref(`categories/${currentCategory}/threads/${currentPostId}/replies`).push({
+            content: content,
+            userId: user.uid,
+            timestamp: firebase.database.ServerValue.TIMESTAMP,
+            user: user.email // Keep for backward compatibility
+          }).then((replyRef) => {
+            // Clear the reply editor
+            replyQuill.setText('');
+            
+            // Send notification to post author if it's not the current user
+            if (post.userId && post.userId !== user.uid) {
+              // Create notification with correct structure
+              const notificationData = {
+                message: `${user.email} replied to your post`,
+                type: 'reply',
+                sourceId: currentPostId,
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                read: false
+              };
+              
+              // Add notification directly to the user's notifications collection
+              db.ref(`users/${post.userId}/notifications`).push(notificationData)
+                .then(() => console.log("Reply notification sent"))
+                .catch(error => console.error("Error sending reply notification:", error));
+            }
+          }).catch(error => {
+            console.error("Error adding reply:", error);
+            alert("Error posting reply");
+          });
+        })
+        .catch(error => {
+          console.error("Error fetching post data:", error);
+          alert("Error posting reply");
+        });
     } else {
       alert("Reply cannot be empty!");
     }
@@ -629,31 +658,63 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
     if (!auth.currentUser) return;
     
     const notificationList = document.querySelector('.notification-list');
+    if (!notificationList) return;
+    
     db.ref(`users/${auth.currentUser.uid}/notifications`)
       .orderByChild('timestamp')
       .limitToLast(10)
       .on('value', (snapshot) => {
         notificationList.innerHTML = '';
         const notifications = [];
+        let unreadCount = 0;
         
         snapshot.forEach((notif) => {
-          notifications.unshift({
+          const notification = {
             key: notif.key,
             ...notif.val()
+          };
+          notifications.unshift(notification);
+          if (!notification.read) unreadCount++;
+        });
+  
+        // Update notification bell badge
+        const bell = document.getElementById('notification-bell');
+        if (unreadCount > 0) {
+          bell.setAttribute('data-count', unreadCount);
+          bell.classList.add('has-notifications');
+        } else {
+          bell.removeAttribute('data-count');
+          bell.classList.remove('has-notifications');
+        }
+  
+        // Render notifications
+        if (notifications.length === 0) {
+          notificationList.innerHTML = '<div class="no-notifications">No notifications</div>';
+        } else {
+          notifications.forEach((notif) => {
+            const div = document.createElement('div');
+            div.className = `notification-item ${notif.read ? '' : 'unread'}`;
+            div.dataset.key = notif.key;
+            div.dataset.type = notif.type || 'general';
+            div.dataset.sourceId = notif.sourceId || '';
+            
+            // Select icon based on notification type
+            let icon = '📢'; // Default icon
+            if (notif.type === 'upvote') icon = '👍';
+            if (notif.type === 'reply') icon = '💬';
+            
+            div.innerHTML = `
+              <span class="notification-icon">${icon}</span>
+              <span class="notification-message">${notif.message}</span>
+              <span class="notification-time">${formatTimestamp(notif.timestamp)}</span>
+            `;
+            
+            // Add click handler to mark as read and navigate
+            div.addEventListener('click', () => handleNotificationClick(notif));
+            
+            notificationList.appendChild(div);
           });
-        });
-
-        notifications.forEach((notif) => {
-          const div = document.createElement('div');
-          div.className = 'notification-item';
-          div.textContent = notif.message;
-          if (!notif.read) {
-            div.classList.add('unread');
-          }
-          notificationList.appendChild(div);
-        });
-
-        updateNotificationCount(notifications.filter(n => !n.read).length);
+        }
       });
   }
 
@@ -1869,279 +1930,6 @@ replyBtn.addEventListener("click", () => {
       .then((snapshot) => {
         const post = snapshot.val();
         
-        db.ref(`categories/${currentCategory}/threads/${currentPostId}/replies`).push({
-          content: content,
-          userId: user.uid,
-          timestamp: firebase.database.ServerValue.TIMESTAMP,
-          user: user.email // Keep this for backward compatibility
-        }).then((replyRef) => {
-          // Add notification for post author
-          if (post.userId && post.userId !== user.uid) {
-            addNotification(
-              post.userId,
-              `${user.email} replied to your post`,
-              'reply',
-              currentPostId
-            );
-          }
-          replyQuill.setText('');
-        }).catch(error => {
-          console.error("Error adding reply:", error);
-          alert("Error posting reply");
-        });
-      })
-      .catch(error => {
-        console.error("Error fetching post data:", error);
-        alert("Error posting reply");
-      });
-  } else {
-    alert("Reply cannot be empty!");
-  }
-});
-
-// Update the createReplyElement function to include reply author information for notifications
-function createReplyElement(reply, replyKey, category, postId) {
-  const replyDiv = document.createElement("div");
-  replyDiv.classList.add("reply");
-  
-  // First, check if the userId property exists in the reply
-  const userId = reply.userId;
-  if (!userId) {
-    // For legacy replies that only have user email
-    firebase.database().ref('users').orderByChild('email').equalTo(reply.user).once('value')
-      .then(snapshot => {
-        let foundUserId = null;
-        snapshot.forEach(child => {
-          foundUserId = child.key;
-        });
-        if (foundUserId) {
-          return firebase.database().ref(`users/${foundUserId}`).once('value');
-        }
-        throw new Error('User not found');
-      })
-      .then(userSnapshot => {
-        const userData = userSnapshot.val();
-        displayReplyContent(userData?.username || reply.user, foundUserId || null);
-      })
-      .catch(error => {
-        console.error("Error getting username:", error);
-        displayReplyContent(reply.user || "Unknown User", null);
-      });
-  } else {
-    // For new replies that have userId
-    firebase.database().ref(`users/${userId}`).once('value')
-      .then(snapshot => {
-        const userData = snapshot.val();
-        displayReplyContent(userData?.username || userData?.email || "Unknown User", userId);
-      })
-      .catch(error => {
-        console.error("Error getting username:", error);
-        displayReplyContent("Unknown User", null);
-      });
-  }
-
-  function displayReplyContent(displayName, replyUserId) {
-    const deleteButton = auth.currentUser && 
-      (auth.currentUser.uid === reply.userId || auth.currentUser.email === reply.user)
-        ? `<button class="delete-reply-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 69 14" class="svgIcon bin-top">
-              <g clip-path="url(#clip0_35_24)">
-                <path fill="white" d="M20.8232 2.62734L19.9948 4.21304C19.8224 4.54309 19.4808 4.75 19.1085 4.75H4.92857C2.20246 4.75 0 6.87266 0 9.5C0 12.1273 2.20246 14.25 4.92857 14.25H64.0714C66.7975 14.25 69 12.1273 69 9.5C69 6.87266 66.7975 4.75 64.0714 4.75H49.8915C49.5192 4.75 49.1776 4.54309 49.0052 4.21305L48.1768 2.62734Z"></path>
-              </g>
-            </svg>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 69 57" class="svgIcon bin-bottom">
-              <path fill="white" d="M63.9723 3.04906C64.0092 3.62279 63.551 4.11106 62.9723 4.11106H6.02772C5.44905 4.11106 4.99084 3.62279 5.02772 3.04906L8.27772 53.8615C8.52772 57.6615 11.8277 60.6111 15.7777 60.6111H53.2223C57.1723 60.6111 60.4723 57.6615 60.7223 53.8615L63.9723 3.04906Z"></path>
-            </svg>
-          </button>` 
-        : '';
-
-    replyDiv.innerHTML = `
-      <div class="reply-content">${reply.content}</div>
-      <div class="reply-footer">
-        <div class="reply-actions">
-          <span class="reply-author">Replied by ${displayName}</span>
-        </div>
-        <div class="reply-actions">
-          ${deleteButton}
-        </div>
-      </div>
-    `;
-
-    // Add upvote button and handlers
-    const upvoteBtn = createUpvoteButton(replyKey, category, 'reply', reply.upvoteCount || 0, postId);
-    replyDiv.querySelector('.reply-actions').prepend(upvoteBtn);
-
-    if (deleteButton) {
-      replyDiv.querySelector(".delete-reply-btn").addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (confirm("Are you sure you want to delete this reply?")) {
-          firebase.database().ref(`categories/${category}/threads/${postId}/replies/${replyKey}`).remove()
-            .then(() => console.log("Reply deleted successfully"))
-            .catch((error) => console.error("Error deleting reply:", error));
-        }
-      });
-    }
-  }
-
-  return replyDiv;
-}
-
-// Update the handleNotificationClick function to better handle both upvote and reply notifications
-function handleNotificationClick(notification) {
-  // Mark as read
-  db.ref(`users/${auth.currentUser.uid}/notifications/${notification.key}/read`)
-    .set(true);
-
-  // Navigate to the relevant content based on type
-  if (notification.sourceId) {
-    if (notification.type === 'reply') {
-      // For reply notifications, navigate to the post that was replied to
-      db.ref('categories').once('value', (snapshot) => {
-        snapshot.forEach((categorySnapshot) => {
-          const categoryKey = categorySnapshot.key;
-          const threadRef = db.ref(`categories/${categoryKey}/threads/${notification.sourceId}`);
-          
-          threadRef.once('value', (threadSnapshot) => {
-            if (threadSnapshot.exists()) {
-              // Found the post, open it
-              openPost(categoryKey, notification.sourceId, threadSnapshot.val());
-              return true;
-            }
-          });
-        });
-      });
-    } else if (notification.type === 'upvote') {
-      // For upvote notifications, try to find the post or reply that was upvoted
-      db.ref('categories').once('value', (snapshot) => {
-        let found = false;
-        
-        snapshot.forEach((categorySnapshot) => {
-          if (found) return;
-          
-          const categoryKey = categorySnapshot.key;
-          const threadsRef = categorySnapshot.child('threads');
-          
-          threadsRef.forEach((threadSnapshot) => {
-            if (found) return;
-            
-            const threadKey = threadSnapshot.key;
-            
-            // Check if this is the upvoted post
-            if (threadKey === notification.sourceId) {
-              openPost(categoryKey, threadKey, threadSnapshot.val());
-              found = true;
-              return;
-            }
-            
-            // Check if this is a reply in this thread
-            const repliesRef = threadSnapshot.child('replies');
-            repliesRef.forEach((replySnapshot) => {
-              if (replySnapshot.key === notification.sourceId) {
-                openPost(categoryKey, threadKey, threadSnapshot.val());
-                found = true;
-                return;
-              }
-            });
-          });
-        });
-      });
-    }
-  }
-  
-  // Close the dropdown
-  document.querySelector('.notifications-dropdown').classList.remove('active');
-}
-
-// Update the addNotification function for clarity
-function addNotification(userId, message, type, sourceId) {
-  if (!userId || userId === auth.currentUser?.uid) return;
-
-  const notificationRef = db.ref(`users/${userId}/notifications`).push();
-  notificationRef.set({
-    message,
-    type,  // 'upvote', 'reply', etc.
-    sourceId,  // postId or replyId
-    timestamp: firebase.database.ServerValue.TIMESTAMP,
-    read: false
-  }).catch(error => {
-    console.error("Error adding notification:", error);
-  });
-}
-
-// Update the loadNotifications function to include reply-specific icon
-function loadNotifications() {
-  if (!auth.currentUser) return;
-  
-  const notificationList = document.querySelector('.notification-list');
-  if (!notificationList) return;
-  
-  db.ref(`users/${auth.currentUser.uid}/notifications`)
-    .orderByChild('timestamp')
-    .limitToLast(10)
-    .on('value', (snapshot) => {
-      notificationList.innerHTML = '';
-      const notifications = [];
-      let unreadCount = 0;
-      
-      snapshot.forEach((notif) => {
-        const notification = {
-          key: notif.key,
-          ...notif.val()
-        };
-        notifications.unshift(notification);
-        if (!notification.read) unreadCount++;
-      });
-
-      // Update notification bell badge
-      const bell = document.getElementById('notification-bell');
-      if (unreadCount > 0) {
-        bell.setAttribute('data-count', unreadCount);
-        bell.classList.add('has-notifications');
-      } else {
-        bell.removeAttribute('data-count');
-        bell.classList.remove('has-notifications');
-      }
-
-      // Render notifications
-      notifications.forEach((notif) => {
-        const div = document.createElement('div');
-        div.className = `notification-item ${notif.read ? '' : 'unread'}`;
-        div.dataset.key = notif.key;
-        div.dataset.type = notif.type;
-        div.dataset.sourceId = notif.sourceId;
-        
-        // Add icon based on notification type
-        const icon = notif.type === 'upvote' ? '👍' : 
-                     notif.type === 'reply' ? '💬' : '📢';
-        
-        div.innerHTML = `
-          <span class="notification-icon">${icon}</span>
-          <span class="notification-message">${notif.message}</span>
-          <span class="notification-time">${formatTimestamp(notif.timestamp)}</span>
-        `;
-        
-        // Add click handler to mark as read and navigate
-        div.addEventListener('click', () => handleNotificationClick(notif));
-        
-        notificationList.appendChild(div);
-      });
-    });
-}
-
-// ...existing code...
-
-// Update the Reply button click handler to properly add notifications
-replyBtn.addEventListener("click", () => {
-  const content = replyQuill.root.innerHTML;
-  if (content.trim() !== '<p><br></p>') {
-    const user = auth.currentUser;
-    
-    // Get post author ID
-    db.ref(`categories/${currentCategory}/threads/${currentPostId}`)
-      .once('value')
-      .then((snapshot) => {
-        const post = snapshot.val();
-        
         // Create new reply with proper data
         const newReply = {
           content: content,
@@ -2223,7 +2011,16 @@ function loadNotifications() {
       }
 
       // Render notifications
+      if (notifications.length === 0) {
+        notificationList.innerHTML = '<div class="no-notifications">No notifications</div>';
+        return;
+      }
+      
+      // For debugging: log the notifications to console
+      console.log("Notifications to display:", notifications);
+      
       notifications.forEach((notif) => {
+        // Create notification item
         const div = document.createElement('div');
         div.className = `notification-item ${notif.read ? '' : 'unread'}`;
         div.dataset.key = notif.key;
@@ -2244,18 +2041,20 @@ function loadNotifications() {
         // Add click handler to mark as read and navigate
         div.addEventListener('click', () => {
           // Mark as read in database
-          db.ref(`users/${auth.currentUser.uid}/notifications/${notif.key}/read`).set(true);
-          
-          // Remove unread styling
-          div.classList.remove('unread');
-          
-          // Navigate based on notification type
-          if (notif.sourceId) {
-            navigateToSource(notif.type, notif.sourceId);
-          }
-          
-          // Close dropdown
-          document.querySelector('.notifications-dropdown').classList.remove('active');
+          db.ref(`users/${auth.currentUser.uid}/notifications/${notif.key}/read`).set(true)
+            .then(() => {
+              // Remove unread styling
+              div.classList.remove('unread');
+              
+              // Navigate based on notification type
+              if (notif.sourceId) {
+                navigateToSource(notif.type, notif.sourceId);
+              }
+              
+              // Close dropdown
+              document.querySelector('.notifications-dropdown').classList.remove('active');
+            })
+            .catch(error => console.error("Error marking notification as read:", error));
         });
         
         notificationList.appendChild(div);
@@ -2263,43 +2062,100 @@ function loadNotifications() {
     });
 }
 
-// New function to handle navigation to different source types
+// Add this helper function to format timestamps in a human-readable way
+function formatTimestamp(timestamp) {
+  if (!timestamp) return 'unknown time';
+  
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diff = now - date;
+  
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
+  if (diff < 604800000) return `${Math.floor(diff/86400000)}d ago`;
+  
+  return date.toLocaleDateString();
+}
+
+// Improved function to navigate to the right source
 function navigateToSource(type, sourceId) {
   if (!sourceId) return;
   
-  // For both reply and upvote notifications, we need to find the relevant thread
+  console.log(`Navigating to ${type} notification with sourceId: ${sourceId}`);
+  
+  // For both reply and upvote notifications, find the relevant thread
   db.ref('categories').once('value', (snapshot) => {
+    let found = false;
+    
     snapshot.forEach((categorySnapshot) => {
+      if (found) return;
+      
       const categoryKey = categorySnapshot.key;
       const threadsRef = categorySnapshot.child('threads');
       
       threadsRef.forEach((threadSnapshot) => {
+        if (found) return;
+        
         const threadKey = threadSnapshot.key;
         
-        // For direct thread matches (post notifications)
+        // Direct match with thread ID (post notifications)
         if (threadKey === sourceId) {
-          const threadData = threadSnapshot.val();
-          openPost(categoryKey, threadKey, threadData);
-          return true; // Break the loop
+          console.log(`Found post in category ${categoryKey}, opening...`);
+          openPost(categoryKey, threadKey, threadSnapshot.val());
+          found = true;
+          return true;
         }
         
-        // For replies within threads
-        const repliesRef = threadSnapshot.child('replies');
-        let replyFound = false;
-        
-        repliesRef.forEach((replySnapshot) => {
-          if (replySnapshot.key === sourceId) {
-            const threadData = threadSnapshot.val();
-            openPost(categoryKey, threadKey, threadData);
-            replyFound = true;
-            return true; // Break the inner loop
-          }
-        });
-        
-        if (replyFound) return true; // Break the outer loop
+        // Check replies within this thread
+        if (!found && threadSnapshot.hasChild('replies')) {
+          const repliesRef = threadSnapshot.child('replies');
+          
+          repliesRef.forEach((replySnapshot) => {
+            if (replySnapshot.key === sourceId) {
+              console.log(`Found reply in post ${threadKey} in category ${categoryKey}, opening post...`);
+              openPost(categoryKey, threadKey, threadSnapshot.val());
+              found = true;
+              return true;
+            }
+          });
+        }
       });
     });
+    
+    if (!found) {
+      console.warn(`Could not find source with ID: ${sourceId}`);
+    }
   });
 }
+
+// ...existing code...
+
+// Ensure the notification bell is properly initialized
+document.addEventListener('DOMContentLoaded', () => {
+  // ...existing code...
+  
+  // Initialize notification bell
+  const notificationBell = document.getElementById('notification-bell');
+  if (notificationBell) {
+    notificationBell.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const dropdown = document.querySelector('.notifications-dropdown');
+      if (dropdown) {
+        dropdown.classList.toggle('active');
+      }
+    });
+  }
+  
+  // Close notification dropdown when clicking outside
+  document.addEventListener('click', () => {
+    const dropdown = document.querySelector('.notifications-dropdown');
+    if (dropdown) {
+      dropdown.classList.remove('active');
+    }
+  });
+  
+  // ...existing code...
+});
 
 // ...existing code...
