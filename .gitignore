@@ -7,18 +7,18 @@ yarn-error.log*
 firebase-debug.log*
 firebase-debug.*.log*
 
-# Firebase
+# Firebase configuration
 firebase_database_rules.txt
 .firebase/
 .firebaserc
 firebase-debug.log
 
-# Environment
+# Environment variables
 .env
 .env.local
 .env.*.local
 
-# IDE
+# IDE files
 .vscode/
 .idea/
 
