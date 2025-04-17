@@ -36,7 +36,6 @@ if(typeof firebase !== 'undefined') {
 
   let currentPostId = null;
   let currentCategory = null;
-  let hasPromptedForUsername = false; // Add this at the top with other global variables
 
   // Initialize Quill editors
   const postQuill = new Quill('#new-post-editor', {
@@ -158,63 +157,6 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
       .catch((error) => alert(error.message));
   });
 
-  function showUsernamePrompt(user) {
-    // Don't show prompt if we've already shown it
-    if (hasPromptedForUsername) {
-      return;
-    }
-    
-    hasPromptedForUsername = true;
-    const usernameModal = document.getElementById('username-modal');
-    usernameModal.style.display = 'block';
-    
-    document.getElementById('save-username-btn').onclick = () => {
-      const username = document.getElementById('username-input').value.trim();
-      
-      if (username) {
-        if (username.length < 3 || username.length > 30) {
-          alert('Username must be between 3 and 30 characters');
-          return;
-        }
-  
-        // First try to reserve the username
-        firebase.database().ref(`usernames/${username}`).transaction((current) => {
-          if (current === null) {
-            return user.uid;
-          }
-          return; // abort if username exists
-        }).then((result) => {
-          if (result.committed) {
-            // Username was reserved successfully, now update user data
-            return firebase.database().ref(`users/${user.uid}`).update({
-              username: username,
-              email: user.email,
-              hasSetUsername: true // Add this flag to user data
-            }).then(() => {
-              usernameModal.style.display = 'none';
-              document.getElementById("login-form").style.display = "none";
-              document.getElementById("signup-form").style.display = "none";
-              
-              // Update UI to show username
-              const userEmailElement = document.getElementById("user-email");
-              if (userEmailElement) {
-                userEmailElement.textContent = username;
-              }
-            });
-          } else {
-            throw new Error('Username already taken');
-          }
-        }).catch(error => {
-          console.error('Error saving username:', error);
-          alert(error.message || 'Error saving username. Please try another.');
-          hasPromptedForUsername = false; // Reset flag on error
-        });
-      } else {
-        alert('Please enter a valid username');
-      }
-    };
-  }
-  
   // Logout Functionality
   logoutBtn.addEventListener("click", () => {
     auth.signOut().then(() => {
@@ -235,16 +177,18 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
         .then((snapshot) => {
           const existingData = snapshot.val() || {};
           
-          // Only update lastLogin
+          // Only update lastLogin and email
           return firebase.database().ref(`users/${user.uid}`).update({
             lastLogin: firebase.database.ServerValue.TIMESTAMP,
             email: user.email || existingData.email
           });
         })
         .then(() => {
-          // Update UI with email
+          // Update UI with email (or username if it exists)
           userEmailElement.style.display = "inline-block";
-          userEmailElement.textContent = user.email;
+          firebase.database().ref(`users/${user.uid}/username`).once('value').then(usernameSnapshot => {
+            userEmailElement.textContent = usernameSnapshot.val() || user.email;
+          });
 
           // Show authenticated UI elements
           logoutBtn.style.display = "inline-block";
@@ -256,12 +200,12 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
         })
         .catch((error) => {
           console.error("Error handling auth state change:", error);
+          // Fallback to email display on error
           userEmailElement.style.display = "inline-block";
           userEmailElement.textContent = user.email;
         });
     } else {
       // Reset UI for logged out state
-      hasPromptedForUsername = false;
       logoutBtn.style.display = "none";
       loginBtn.style.display = "inline-block";
       signupBtn.style.display = "inline-block";
@@ -831,7 +775,7 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
       ? `<button class="delete-btn">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 69 14" class="svgIcon bin-top">
             <g clip-path="url(#clip0_35_24)">
-              <path fill="white" d="M20.8232 2.62734L19.9948 4.21304C19.8224 4.54309 19.4808 4.75 19.1085 4.75H4.92857C2.20246 4.75 0 6.87266 0 9.5C0 12.1273 2.20246 14.25 4.92857 14.25H64.0714C66.7975 14.25 69 12.1273 69 9.5C69 6.87266 66.7975 4.75 64.0714 4.75H49.8915C49.5192 4.75 49.1776 4.54309 49.0052 4.21305L48.1768 2.62734Z"></path>
+              <path fill="white" d="M20.8232 2.62734L19.9948 4.21304C19.8224 4.4569 19.4808 4.75 19.1085 4.75H4.92857C2.20246 4.75 0 6.87266 0 9.5C0 12.1273 2.20246 14.25 4.92857 14.25H64.0714C66.7975 14.25 69 12.1273 69 9.5C69 6.87266 66.7975 4.75 64.0714 4.75H49.8915C49.5192 4.75 49.1776 4.54309 49.0052 4.21305L48.1768 2.62734Z"></path>
             </g>
           </svg>
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 69 57" class="svgIcon bin-bottom">
