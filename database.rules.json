@@ -9,21 +9,44 @@
       },
       "pageViews": {
         ".read": true,
-        ".write": true,
-        ".validate": "newData.isNumber() && (!data.exists() || newData.val() > data.val())"
+        ".write": true
       }
     },
     "users": {
       ".read": true,
-      ".indexOn": ["email"],
+      ".indexOn": ["email", "username"],
       "$uid": {
         ".read": "auth != null",
-        ".write": "$uid === auth.uid || auth != null",
+        ".write": "$uid === auth.uid",
+        "username": {
+          ".validate": "newData.isString() && newData.val().length >= 3 && newData.val().length <= 30 && newData.val().matches(/^[a-zA-Z0-9_-]+$/) "
+        },
         "notifications": {
           ".read": "$uid === auth.uid",
-          ".write": "$uid === auth.uid || auth != null",
-          ".indexOn": ["timestamp", "read"]
+          ".write": "auth != null",
+          ".indexOn": ["timestamp", "read"],
+          "$notificationId": {
+            ".validate": "newData.hasChildren(['message', 'timestamp', 'type', 'read', 'sourceId'])"
+          }
+        },
+        "profile": {
+          ".read": true,
+          ".write": "$uid === auth.uid",
+          "bio": {
+            ".validate": "newData.isString() && newData.val().length <= 500"
+          },
+          "avatar": {
+            ".validate": "newData.isString() && newData.val().matches(/^https?:\\/\\/.+/) "
+          }
         }
+      }
+    },
+    "usernames": {
+      ".read": true,
+      ".indexOn": [".value"],
+      "$username": {
+        ".write": "auth != null && (!data.exists() || data.val() === auth.uid)",
+        ".validate": "newData.val() === auth.uid && $username.matches(/^[a-zA-Z0-9_-]{3,30}$/) "
       }
     },
     "categories": {
@@ -36,14 +59,77 @@
           "$threadId": {
             ".read": true,
             ".write": "auth != null",
+            ".validate": "newData.hasChildren(['content', 'userId', 'timestamp'])",
+            "content": {
+              ".validate": "newData.isString()"
+            },
+            "userId": {
+              ".validate": "newData.val() === auth.uid"
+            },
             "replies": {
               ".read": true,
               ".write": "auth != null",
-              ".indexOn": ["timestamp"]
+              ".indexOn": ["timestamp"],
+              "$replyId": {
+                ".validate": "newData.hasChildren(['content', 'userId', 'timestamp'])",
+                "userId": {
+                  ".validate": "newData.val() === auth.uid"
+                },
+                "upvotes": {
+                  ".read": true,
+                  ".write": "auth != null",
+                  "$uid": {
+                    ".validate": "auth.uid === $uid"
+                  }
+                },
+                "upvoteCount": {
+                  ".read": true,
+                  ".write": "auth != null"
+                }
+              }
             },
             "upvotes": {
               ".read": true,
+              ".write": "auth != null",
+              "$uid": {
+                ".validate": "auth.uid === $uid"
+              }
+            },
+            "upvoteCount": {
+              ".read": true,
               ".write": "auth != null"
+            }
+          }
+        }
+      }
+    },
+    "community": {
+      ".read": true,
+      "posts": {
+        ".read": true,
+        ".write": "auth != null",
+        ".indexOn": ["timestamp", "likeCount"],
+        "$postId": {
+          ".validate": "newData.hasChildren(['content', 'userId', 'timestamp'])",
+          "userId": {
+            ".validate": "newData.val() === auth.uid"
+          },
+          "likes": {
+            ".read": true,
+            ".write": "auth != null",
+            "$uid": {
+              ".validate": "newData.val() === true && $uid === auth.uid"
+            }
+          },
+          "comments": {
+            ".read": true,
+            ".write": "auth != null",
+            ".indexOn": ["timestamp"],
+            "$commentId": {
+              ".validate": "newData.hasChildren(['content', 'userId', 'timestamp'])",
+              "userId": {
+                ".validate": "newData.val() === auth.uid"
+              }
             }
           }
         }
@@ -52,9 +138,36 @@
     "sessions": {
       ".read": true,
       ".write": true,
-      ".indexOn": ["timestamp", "startTime"],
-      "$sessionId": {
-        ".validate": "newData.hasChildren(['timestamp', 'startTime']) && newData.child('timestamp').isNumber() && newData.child('startTime').isNumber() && (!data.exists() || newData.child('startTime').val() >= data.child('startTime').val())"
+      ".indexOn": ["timestamp", "deviceId"]
+    },
+    "tarsLogs": {
+      ".read": true,
+      ".write": "auth != null",
+      ".indexOn": ["timestamp"],
+      "$logId": {
+        ".validate": "newData.hasChildren(['message', 'timestamp'])"
+      }
+    },
+    "projects": {
+      ".read": true,
+      ".write": "auth != null",
+      ".indexOn": ["userId", "timestamp"],
+      "$projectId": {
+        "userId": { ".validate": "newData.val() === auth.uid" },
+        "creatorName": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 50" },
+        "title": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
+        "description": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500" },
+        "imageUrls": {
+          ".validate": "newData.hasChildren() && newData.child('0').exists() && !newData.child('3').exists()",
+          "$imageId": {
+            ".validate": "newData.isString() && ($imageId === '0' || $imageId === '1' || $imageId === '2') && (newData.val().matches(/^https?:\\/\\/.+/) || newData.val().matches(/^data:image.*/))"
+          }
+        },
+        "projectLink": {
+          ".validate": "!newData.exists() || (newData.isString() && newData.val().length > 0 && newData.val().matches(/^https?:\\/\\/.+/))"
+        },
+        "timestamp": { ".validate": "newData.isNumber()" },
+        "$other": { ".validate": false }
       }
     }
   }

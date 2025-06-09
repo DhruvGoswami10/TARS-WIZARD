@@ -533,7 +533,16 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
       // Sort posts by timestamp in descending order (newest first)
       posts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
   
-      // When in preview mode, show only the 2 most recent posts
+      // Update post count if in preview mode
+      if (isPreview) {
+        const seeMoreBtn = document.querySelector(`[data-category="${category}"] .see-more`);
+        // Update count regardless of button text when switching to preview
+        if (seeMoreBtn) {
+          updateCategoryCount(category, posts.length);
+        }
+      }
+  
+      // Show all posts or just the preview
       const postsToShow = isPreview ? posts.slice(0, 2) : posts;
       const fragment = document.createDocumentFragment();
       
@@ -1028,14 +1037,17 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
           if (foundUserId) {
             return firebase.database().ref(`users/${foundUserId}`).once('value');
           }
-          throw new Error('User not found');
+          // If no user found by email, use the email directly as display name
+          displayReplyContent(reply.user || "Unknown User"); 
+          return null; // Stop further processing in this chain
         })
         .then(userSnapshot => {
+          if (!userSnapshot) return; // Skip if displayReplyContent was already called
           const userData = userSnapshot.val();
-          displayReplyContent(userData?.username || reply.user);
+          displayReplyContent(userData?.username || userData?.email || reply.user || "Unknown User");
         })
         .catch(error => {
-          console.error("Error getting username:", error);
+          console.error("Error getting username for legacy reply:", error);
           displayReplyContent(reply.user || "Unknown User");
         });
     } else {
@@ -1046,7 +1058,7 @@ setInterval(syncUsersCount, 5 * 60 * 1000);
           displayReplyContent(userData?.username || userData?.email || "Unknown User");
         })
         .catch(error => {
-          console.error("Error getting username:", error);
+          console.error("Error getting username for reply:", error);
           displayReplyContent("Unknown User");
         });
     }
@@ -1474,11 +1486,11 @@ document.querySelectorAll('.see-more').forEach(button => {
 
 // ...existing code...
 
-function createPostElement(post, category, userEmail) {
-  const postDiv = document.createElement("div");
-  postDiv.classList.add("post");
-  
-  // Get reply count before creating post element
+      firebase.database().ref('users').orderByChild('email').equalTo(reply.user).once('value')eatePostElement(post, category, userEmail) {
+        .then(snapshot => {postDiv = document.createElement("div");
+          let foundUserId = null;
+          snapshot.forEach(child => {
+            foundUserId = child.key;
   db.ref(`categories/${category}/threads/${post.key}/replies`).on('value', (snapshot) => {
     const replyCount = snapshot.numChildren() || 0;
     const metaDiv = postDiv.querySelector('.post-meta');

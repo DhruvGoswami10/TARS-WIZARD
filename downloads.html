@@ -3,167 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Downloads - TARS AI</title>
+    <title>Downloads - TARS WIZARD</title>
     <link rel="stylesheet" href="styles.css">
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 </head>
 <body>
-    <nav class="main-nav">
-        <ul class="nav-links">
-            <li><a href="index.html">Home</a></li>
-            <li><a href="downloads.html" class="active">Downloads</a></li>
-            <li><a href="forums.html">Forums</a></li>
-        </ul>
+    <nav class="main-navbar" id="main-navbar">
+        <div class="navbar-content">
+            <a href="index.html" class="nav-brand">TARS WIZARD</a>            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="downloads.html" class="active">Downloads</a></li>
+                <li><a href="work-in-progress.html">Work in Progress</a></li>
+            </ul>
+        </div>
     </nav>
-    
-    <header class="page-header">
-        <div class="header-content">
-            <h1>Downloads</h1>
-            <div class="header-controls">
-              <div class="auth-buttons">
-                <button id="signup-btn">Sign Up</button>
-                <button id="login-btn">Login</button>
-                <span id="user-email" class="user-email"></span>
-                <button id="logout-btn" style="display:none;">Logout</button>
-              </div>
-            </div>
-          </div>
+
+    <header class="page-header downloads-header">
+        <h1>Downloads & Resources</h1>
+        <p>Essential files, guides, and components to build your TARS.</p>
     </header>
 
-    <main id="content" style="display: none;">
-        <div class="cards-container">
-            <div class="card-container">
-                <div class="card">
-                    <img src="images/walk.gif">
-                    <div class="card-description">
-                        <p class="text-title">Walking Mechanism and voice seperate</p>
-                        <p class="text-body">Download this file and run it seperately if you want to speak and control using bluetooth controller.</p>
+    <main id="content">
+
+        <!-- YouTube Video Player -->
+        <section id="tars-video" class="download-section-minimal text-center" style="margin-bottom: 2rem;">
+            <h2>Meet TARS</h2>
+            <div class="video-container" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; background: #000; margin: 0 auto; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                <iframe 
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border:0;"
+                    src="https://www.youtube.com/watch?v=onVhbeY7nLM&ab_channel=4KHDRMedia" 
+                    title="YouTube video player" 
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                    allowfullscreen>
+                </iframe>
+            </div>
+        </section>
+
+        <!-- Section 1: Code and Executables -->
+        <section id="code-executables" class="download-section-minimal">
+            <h2>Code & Executables</h2>
+            <p>Download the core software for TARS.</p>
+            <div class="minimal-card-container">
+                <div class="minimal-card">
+                    <h3>TARS Source Code</h3>
+                    <p>Download the main Python script for TARS (TARSmech.py).</p>
+                    <div class="card-footer">
+                        <button class="download-btn minimal-btn" id="download-code-btn">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M12 3V16M12 16L16 11.625M12 16L8 11.625" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M21 16L21 19C21 20.1046 20.1046 21 19 21L5 21C3.89543 21 3 20.1046 3 19L3 16" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
+                            Download Code
+                        </button>
+                        <span class="file-size">~50 KB</span>
                     </div>
                 </div>
-                <button type="button" class="button" onclick="downloadFile('downloads/TARSvoice-mech.zip')">
-                    <span class="button__text">Download</span>
-                    <span class="button__icon">
-                        <svg class="svg" data-name="Layer 2" id="bdd05811-e15d-428c-bb53-8661459f9307" viewBox="0 0 35 35" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
-                            <path d="M17.5,22.693a3.189,3.189,0,0,1-2.262-.936L8.487,15.006a1.249,1.249,0,0,1,1.767-1.767l6.751,6.751a.7.7,0,0,0,.99,0l6.751-6.751a1.25,1.25,0,0,1,1.768,1.767l-6.752,6.751A3.191,3.191,0,0,1,17.5,22.693Z"></path>
-                            <path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z"></path>
-                        </svg>
-                    </span>
-                </button>
-            </div>
-
-            <div class="card-container">
-                <div class="card">
-                    <img src="images/speak.gif">
-                    <div class="card-description">
-                        <p class="text-title">TARS Voice</p>
-                        <p class="text-body">Download this file to ask questions and make movements with voice.</p>
+                <div class="minimal-card">
+                    <h3>TARS Executable (EXE)</h3>
+                    <p>Download a pre-compiled executable for Windows (if available).</p>
+                    <div class="card-footer">
+                        <button class="download-btn minimal-btn" id="download-exe-btn">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M12 3V16M12 16L16 11.625M12 16L8 11.625" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M21 16L21 19C21 20.1046 20.1046 21 19 21L5 21C3.89543 21 3 20.1046 3 19L3 16" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
+                            Download EXE
+                        </button>
+                        <span class="file-size">Unknown</span>
                     </div>
                 </div>
-                <button type="button" class="button" onclick="downloadFile('downloads/voice commands.zip')">
-                    <span class="button__text">Download</span>
-                    <span class="button__icon">
-                        <svg class="svg" data-name="Layer 2" id="bdd05811-e15d-428c-bb53-8661459f9307" viewBox="0 0 35 35" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
-                            <path d="M17.5,22.693a3.189,3.189,0,0,1-2.262-.936L8.487,15.006a1.249,1.249,0,0,1,1.767-1.767l6.751,6.751a.7.7,0,0,0,.99,0l6.751-6.751a1.25,1.25,0,0,1,1.768,1.767l-6.752,6.751A3.191,3.191,0,0,1,17.5,22.693Z"></path>
-                            <path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z"></path>
-                        </svg>
-                    </span>
-                </button>
             </div>
+        </section>
 
-            <div class="card-container">
-                <div class="card">
-                    <img src="images/voicewalk.gif">
-                    <div class="card-description">
-                        <p class="text-title">Walking with controller</p>
-                        <p class="text-body">Download this file to move tars with bluetooth controller only.</p>
+        <!-- Section 2: Guides and 3D Files -->
+        <section id="guides-3d-files" class="download-section-minimal">
+            <h2>Guides & 3D Files</h2>
+            <p>Essential documentation and 3D models for building TARS.</p>
+            <div class="minimal-card-container">
+                <!-- Code-guide.pdf Card -->
+                <div class="minimal-card">
+                    <h3>Code Setup Guide (PDF)</h3>
+                    <p>Comprehensive guide detailing codebase, functions, and setup.</p>
+                    <div class="card-footer">
+                        <a href="downloads/Code-guide.pdf" target="_blank" class="download-btn minimal-btn view-btn">
+                             <svg width="24px" height="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M15.0007 12C15.0007 13.6569 13.6576 15 12.0007 15C10.3439 15 9.00073 13.6569 9.00073 12C9.00073 10.3431 10.3439 9 12.0007 9C13.6576 9 15.0007 10.3431 15.0007 12Z" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M12.0012 5C7.52354 5 3.73326 7.94288 2.45898 12C3.73324 16.0571 7.52354 19 12.0012 19C16.4788 19 20.2691 16.0571 21.5434 12C20.2691 7.94291 16.4788 5 12.0012 5Z" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
+                            View Guide
+                        </a>
+                        <span class="file-size">~2.5 MB</span>
                     </div>
                 </div>
-                <button type="button" class="button" onclick="downloadFile('downloads/TARSmech.py')">
-                    <span class="button__text">Download</span>
-                    <span class="button__icon">
-                        <svg class="svg" data-name="Layer 2" id="bdd05811-e15d-428c-bb53-8661459f9307" viewBox="0 0 35 35" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
-                            <path d="M17.5,22.693a3.189,3.189,0,0,1-2.262-.936L8.487,15.006a1.249,1.249,0,0,1,1.767-1.767l6.751,6.751a.7.7,0,0,0,.99,0l6.751-6.751a1.25,1.25,0,0,1,1.768,1.767l-6.752,6.751A3.191,3.191,0,0,1,17.5,22.693Z"></path>
-                            <path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z"></path>
-                        </svg>
-                    </span>
-                </button>
-            </div>
 
-            <div class="card-container">
-                <div class="card">
-                    <img src="images/enq.gif">
-                    <div class="card-description">
-                        <p class="text-title">Enquries...</p>
-                        <p class="text-body">If you want me to build you TARS complete then click on the button below to enquire prices.</p>
+                <!-- TARS-Parts.zip Card -->
+                <div class="minimal-card">
+                    <h3>3D Parts & List (ZIP)</h3>
+                    <p>3D models (STL) for printing and a detailed parts list.</p>
+                    <div class="card-footer">
+                        <a href="downloads/TARS-Parts.zip" download class="download-btn minimal-btn">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M12 3V16M12 16L16 11.625M12 16L8 11.625" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M21 16L21 19C21 20.1046 20.1046 21 19 21L5 21C3.89543 21 3 20.1046 3 19L3 16" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
+                            Download Parts
+                        </a>
+                        <span class="file-size">~15 MB</span>
                     </div>
                 </div>
-                <button type="button" class="button" onclick="downloadFile('downloads/enquiries.py')">
-                    <span class="button__text">Download</span>
-                    <span class="button__icon">
-                        <svg class="svg" data-name="Layer 2" id="bdd05811-e15d-428c-bb53-8661459f9307" viewBox="0 0 35 35" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path>
-                            <path d="M17.5,22.693a3.189,3.189,0,0,1-2.262-.936L8.487,15.006a1.249,1.249,0,0,1,1.767-1.767l6.751,6.751a.7.7,0,0,0,.99,0l6.751-6.751a1.25,1.25,0,0,1,1.768,1.767l-6.752,6.751A3.191,3.191,0,0,1,17.5,22.693Z"></path>
-                            <path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z"></path>
-                        </svg>
-                    </span>
-                </button>
-            </div>
-        </div>
-
-        <div class="download-section">
-            <div class="info-cards-grid">
-                <div class="info-card info-red" onclick="window.location.href='https://drive.google.com/drive/folders/1JkQSiaHRGeOVfGtclAxc8S-cPtWUtZwQ?usp=sharing'">
-                    <p class="info-tip">Assembly Guide</p>
-                    <p class="info-text">Required to assemble your sarcastic robot</p>
-                </div>
-                <div class="info-card info-blue" onclick="downloadFile('downloads/TARS-Parts.zip')">
-                    <p class="info-tip">3D Files</p>
-                    <p class="info-text">Absolutely necessary, you will have to print yourself</p>
-                </div>
-                <div class="info-card info-green" onclick="downloadFile('downloads/Code-guide.pdf')">
-                    <p class="info-tip">Code Guide</p>
-                    <p class="info-text">Required to get your API keys</p>
+                
+                <!-- Assembly Guide Link Card -->
+                <div class="minimal-card">
+                    <h3>Assembly Guide</h3>
+                    <p>Step-by-step instructions to assemble your TARS robot.</p>
+                     <div class="card-footer">
+                        <a href="https://drive.google.com/drive/folders/1JkQSiaHRGeOVfGtclAxc8S-cPtWUtZwQ?usp=sharing" target="_blank" class="download-btn minimal-btn view-btn">
+                            <svg width="24px" height="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M15.0007 12C15.0007 13.6569 13.6576 15 12.0007 15C10.3439 15 9.00073 13.6569 9.00073 12C9.00073 10.3431 10.3439 9 12.0007 9C13.6576 9 15.0007 10.3431 15.0007 12Z" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M12.0012 5C7.52354 5 3.73326 7.94288 2.45898 12C3.73324 16.0571 7.52354 19 12.0012 19C16.4788 19 20.2691 16.0571 21.5434 12C20.2691 7.94291 16.4788 5 12.0012 5Z" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
+                            View Guide (External)
+                        </a>
+                         <span class="file-size">Google Drive</span>
+                    </div>
                 </div>
             </div>
-            <div class="instructions">
-                <h2>Installation Instructions</h2>
-                <div class="instruction-step">
-                    <h3>Step 1: Prerequisites</h3>
-                    <p>Download and print all the 3D parts. Order the necessary components from the links below.</p>
+        </section>
+
+        <!-- Section 3: Core Files (Original files, can be removed or integrated if Code/EXE buttons cover them) -->
+        <section id="core-files" class="download-section-minimal" style="display: none;"> <!-- Hidden for now, decide if needed -->
+            <h2>Core Files</h2>
+            <p>The essential software needed to run TARS.</p>
+            <div class="minimal-card-container">
+                <!-- TARSmech.py Card -->
+                <div class="minimal-card">
+                    <h3>TARSmech.py</h3>
+                    <p>Main script for TARS mechanical control.</p>
+                    <div class="card-footer">
+                        <a href="downloads/TARSmech.py" download class="download-btn minimal-btn">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M12 3V16M12 16L16 11.625M12 16L8 11.625" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M21 16L21 19C21 20.1046 20.1046 21 19 21L5 21C3.89543 21 3 20.1046 3 19L3 16" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
+                            Download Script
+                        </a>
+                        <span class="file-size">~50 KB</span>
+                    </div>
                 </div>
-                <div class="instruction-step">
-                    <h3>Step 2: Main Files</h3>
-                    <p>Download the main program files from the cards above.</p>
+
+                <!-- TARSvoice-mech.zip Card -->
+                <div class="minimal-card">
+                    <h3>TARSvoice-mech.zip</h3>
+                    <p>Scripts and configurations for voice command integration.</p>
+                    <div class="card-footer">
+                        <a href="downloads/TARSvoice-mech.zip" download class="download-btn minimal-btn">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M12 3V16M12 16L16 11.625M12 16L8 11.625" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M21 16L21 19C21 20.1046 20.1046 21 19 21L5 21C3.89543 21 3 20.1046 3 19L3 16" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
+                            Download ZIP
+                        </a>
+                        <span class="file-size">~1.2 MB</span>
+                    </div>
                 </div>
-                <div class="instruction-step">
-                    <h3>Step 3: Documentation</h3>
-                    <p>Get the documentation for detailed setup and usage instructions.</p>
-                </div>
-                <div class="instruction-step">
-                    <h3>Step 4: Setup</h3>
-                    <p>Make sure your raspberry pi is connected to the internet, Read the instructions, follow the guide and run your code.</p>
-                </div>
-                <div class="instruction-step">
-                    <h3>Step 5: Enjoy</h3>
-                    <p>Enjoy your new sarcastic robot and share your experience with us. Use forums to discuss any issues related to code or 3D files or instructions.</p>
+
+                <!-- voice commands.zip Card -->
+                <div class="minimal-card">
+                    <h3>voice commands.zip</h3>
+                    <p>Audio files and configuration for recognized voice commands.</p>
+                    <div class="card-footer">
+                        <a href="downloads/voice commands.zip" download class="download-btn minimal-btn">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M12 3V16M12 16L16 11.625M12 16L8 11.625" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M21 16L21 19C21 20.1046 20.1046 21 19 21L5 21C3.89543 21 3 20.1046 3 19L3 16" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
+                            Download ZIP
+                        </a>
+                        <span class="file-size">~800 KB</span>
+                    </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <div class="support-section">
-            <a href="https://www.buymeacoffee.com/DhruvG24">
-                <img src="https://img.buymeacoffee.com/button-api/?text=Support AI Revolution&emoji=&slug=DhruvG24&button_colour=FF5F5F&font_colour=ffffff&font_family=Poppins&outline_colour=000000&coffee_colour=FFDD00" />
-            </a>
-        </div>
-
-        <div class="components-section">
-            <h2 class="components-title">Components used in this project</h2>
+        <!-- Section 4: Required Components -->
+        <section id="required-components" class="download-section-minimal components-section">
+             <h2 class="components-title">Required Components</h2>
+             <p>A list of parts needed to build TARS. Links are provided for convenience.</p>
             <div class="components-list">
+                
                 <div class="component-item">
                     <img src="images/raspberry pi 5.jpg" alt="Raspberry Pi 5" class="component-image">
                     <div class="component-details">
@@ -171,9 +174,9 @@
                         <p>Brains of TARS.</p>
                     </div>
                     <span class="component-quantity">x 1</span>
-                    <a href="https://amzn.to/4j7fhfm" class="cart-button">
+                    <a href="https://amzn.to/4j7fhfm" target="_blank" rel="noopener noreferrer" class="cart-button">
                         <i class="cart-icon">🛒</i>
-                        Add to Cart
+                        View Item
                     </a>
                 </div>
 
@@ -184,204 +187,204 @@
                         <p>Highly recommend this specific one.</p>
                     </div>
                     <span class="component-quantity">x 3</span>
-                    <a href="https://amzn.to/3DVIAkD" class="cart-button">
+                    <a href="https://amzn.to/3DVIAkD" target="_blank" rel="noopener noreferrer" class="cart-button">
                         <i class="cart-icon">🛒</i>
-                        Add to Cart
+                        View Item
                     </a>
                 </div>
 
                 <div class="component-item">
-                    <img src="images/12v to 5v converter.jpg" alt="12v to 5v converter" class="component-image">
+                    <img src="images/12v to 5v converter.jpg" alt="Metal gear Servo" class="component-image">
                     <div class="component-details">
                         <h3>12v to 5v DC-DC converter</h3>
                         <p>Stable power source for servo motors</p>
                     </div>
                     <span class="component-quantity">x 1</span>
-                    <a href="https://amzn.to/40cGq82" class="cart-button">
+                    <a href="https://amzn.to/40cGq82" target="_blank" rel="noopener noreferrer" class="cart-button">
                         <i class="cart-icon">🛒</i>
-                        Add to Cart
+                        View Item
                     </a>
                 </div>
 
                 <div class="component-item">
-                    <img src="images/5 inch display.jpg" alt="LCD Display" class="component-image">
+                    <img src="images/5 inch display.jpg" alt="Metal gear Servo" class="component-image">
                     <div class="component-details">
                         <h3>5 inch LCD Display</h3>
                         <p>To watch videos, WHAT DO YOU THINK WHY ELSE?!</p>
                     </div>
                     <span class="component-quantity">x 1</span>
-                    <a href="https://amzn.to/40jiReN" class="cart-button">
+                    <a href="https://amzn.to/40jiReN" target="_blank" rel="noopener noreferrer" class="cart-button">
                         <i class="cart-icon">🛒</i>
-                        Add to Cart
+                        View Item
                     </a>
                 </div>
 
                 <div class="component-item">
-                    <img src="images/servo driver.jpg" alt="Servo driver" class="component-image">
+                    <img src="images/servo driver.jpg" alt="Metal gear Servo" class="component-image">
                     <div class="component-details">
                         <h3>Servo Driver</h3>
                         <p>To control multiple servos.</p>
                     </div>
                     <span class="component-quantity">x 1</span>
-                    <a href="https://amzn.to/40oVYqc" class="cart-button">
+                    <a href="https://amzn.to/40oVYqc" target="_blank" rel="noopener noreferrer" class="cart-button">
                         <i class="cart-icon">🛒</i>
-                        Add to Cart
+                        View Item
                     </a>
                 </div>
 
                 <div class="component-item">
-                    <img src="images/usb mini mic.jpg" alt="Mini Mic" class="component-image">
+                    <img src="images/usb mini mic.jpg" alt="Metal gear Servo" class="component-image">
                     <div class="component-details">
                         <h3>Mini Microphone</h3>
                         <p>USB 2.0 mini mic for TARS to listen to your burning questions</p>
                     </div>
                     <span class="component-quantity">x 1</span>
-                    <a href="https://amzn.to/4a8WfAZ" class="cart-button">
+                    <a href="https://amzn.to/4a8WfAZ" target="_blank" rel="noopener noreferrer" class="cart-button">
                         <i class="cart-icon">🛒</i>
-                        Add to Cart
+                        View Item
                     </a>
                 </div>
 
                 <div class="component-item">
-                    <img src="images/speaker.jpg" alt="Mini Speaker" class="component-image">
+                    <img src="images/speaker.jpg" alt="Metal gear Servo" class="component-image">
                     <div class="component-details">
                         <h3>Mini Speaker</h3>
                         <p>Mini Bluetooth speaker for TARS. (10/10 Would not recommend because TARS won't stop roasting you)</p>
                     </div>
                     <span class="component-quantity">x 1</span>
-                    <a href="https://amzn.to/4lAmXb1" class="cart-button">
+                    <a href="https://amzn.to/4lAmXb1" target="_blank" rel="noopener noreferrer" class="cart-button">
                         <i class="cart-icon">🛒</i>
-                        Add to Cart
+                        View Item
                     </a>
                 </div>
 
                 <div class="component-item">
-                    <img src="images/xt60 connector.jpg" alt="Connector cables" class="component-image">
+                    <img src="images/xt60 connector.jpg" alt="Metal gear Servo" class="component-image">
                     <div class="component-details">
                         <h3>XT60 Connector cables</h3>
                         <p>Comes in 2pcs: 1 male and 1 female (used for DC converter)</p>
                     </div>
                     <span class="component-quantity">x 1</span>
-                    <a href="https://amzn.to/3ZXSBW0" class="cart-button">
+                    <a href="https://amzn.to/3ZXSBW0" target="_blank" rel="noopener noreferrer" class="cart-button">
                         <i class="cart-icon">🛒</i>
-                        Add to Cart
+                        View Item
                     </a>
                 </div>
 
                 <div class="component-item">
-                    <img src="images/hdmi.jpg" alt="HDMI cable" class="component-image">
+                    <img src="images/hdmi.jpg" alt="Metal gear Servo" class="component-image">
                     <div class="component-details">
                         <h3>Micro HDMI to HDMI Cable</h3>
                         <p>To connect raspberry pi with display</p>
                     </div>
                     <span class="component-quantity">x 1</span>
-                    <a href="https://amzn.to/3PoFdFu" class="cart-button">
+                    <a href="https://amzn.to/3PoFdFu" target="_blank" rel="noopener noreferrer" class="cart-button">
                         <i class="cart-icon">🛒</i>
-                        Add to Cart
+                        View Item
                     </a>
                 </div>
 
                 <div class="component-item">
-                    <img src="images/battery.jpg" alt="Bat tree" class="component-image">
+                    <img src="images/battery.jpg" alt="Metal gear Servo" class="component-image">
                     <div class="component-details">
                         <h3>LiPo Battery 1300 mAh</h3>
                         <p>For Servos it should be: 11.1V 76C (I have calculated)</p>
                     </div>
                     <span class="component-quantity">x 1</span>
-                    <a href="https://amzn.to/4j9A3uP" class="cart-button">
+                    <a href="https://amzn.to/4j9A3uP" target="_blank" rel="noopener noreferrer" class="cart-button">
                         <i class="cart-icon">🛒</i>
-                        Add to Cart
+                        View Item
                     </a>
                 </div>
 
                 <div class="component-item">
-                    <img src="images/powerbank.jpg" alt="Powerbank" class="component-image">
+                    <img src="images/powerbank.jpg" alt="Metal gear Servo" class="component-image">
                     <div class="component-details">
                         <h3>Powerbank</h3>
                         <p>Take it apart and use it</p>
                     </div>
                     <span class="component-quantity">x 1</span>
-                    <a href="https://fr.aliexpress.com/item/1005007622153868.html?spm=a2g0o.imagesearchproductlist.main.1.6a31LBQ7LBQ70d&algo_pvid=ec4ec590-9114-4179-8b15-b8ec0e601ac1&algo_exp_id=ec4ec590-9114-4179-8b15-b8ec0e601ac1&pdp_ext_f=%7B%22order%22%3A%221028%22%7D&pdp_npi=4%40dis%21AED%21163.15%2176.69%21%21%2143.12%2120.27%21%40210123bc17449252383501188e7a74%2112000041782559248%21sea%21AE%212041467628%21X&curPageLogUid=nIKZsgqZZMK6&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search" class="cart-button">
+                    <a href="https://fr.aliexpress.com/item/1005007622153868.html?spm=a2g0o.imagesearchproductlist.main.1.6a31LBQ7LBQ70d&algo_pvid=ec4ec590-9114-4179-8b15-b8ec0e601ac1&algo_exp_id=ec4ec590-9114-4179-8b15-b8ec0e601ac1&pdp_ext_f=%7B%22order%22%3A%221028%22%7D&pdp_npi=4%40dis%21AED%21163.15%2176.69%21%21%2143.12%2120.27%21%40210123bc17449252383501188e7a74%2112000041782559248%21sea%21AE%212041467628%21X&curPageLogUid=nIKZsgqZZMK6&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search" target="_blank" rel="noopener noreferrer" class="cart-button">
                         <i class="cart-icon">🛒</i>
-                        Add to Cart
+                        View Item
                     </a>
                 </div>
 
                 <div class="component-item">
-                    <img src="images/battery charger.jpg" alt="Battery charger" class="component-image">
+                    <img src="images/battery charger.jpg" alt="Metal gear Servo" class="component-image">
                     <div class="component-details">
                         <h3>LiPo Battery Charger</h3>
                         <p>Make sure it has 2/3 pins</p>
                     </div>
                     <span class="component-quantity">x 1</span>
-                    <a href="https://amzn.to/3DIuD9X" class="cart-button">
+                    <a href="https://amzn.to/3DIuD9X" target="_blank" rel="noopener noreferrer" class="cart-button">
                         <i class="cart-icon">🛒</i>
-                        Add to Cart
+                        View Item
                     </a>
                 </div>
 
                 <div class="component-item">
-                    <img src="images/8bitdo.jpg" alt="Controller" class="component-image">
+                    <img src="images/8bitdo.jpg" alt="Metal gear Servo" class="component-image">
                     <div class="component-details">
                         <h3>8 Bit Do Controller</h3>
                         <p>To control TARS</p>
                     </div>
                     <span class="component-quantity">x 1</span>
-                    <a href="https://amzn.to/3C7gXVd" class="cart-button">
+                    <a href="https://amzn.to/3C7gXVd" target="_blank" rel="noopener noreferrer" class="cart-button">
                         <i class="cart-icon">🛒</i>
-                        Add to Cart
+                        View Item
                     </a>
                 </div>
 
                 <div class="component-item">
-                    <img src="images/handy keyboard.jpg" alt="Keyboard w/trackpad" class="component-image">
+                    <img src="images/handy keyboard.jpg" alt="Metal gear Servo" class="component-image">
                     <div class="component-details">
                         <h3>Handy mini Keyboard and touchpad</h3>
                         <p>To run code on your machine.</p>
                     </div>
                     <span class="component-quantity">x 1</span>
-                    <a href="https://amzn.to/40k1afc" class="cart-button">
+                    <a href="https://amzn.to/40k1afc" target="_blank" rel="noopener noreferrer" class="cart-button">
                         <i class="cart-icon">🛒</i>
-                        Add to Cart
+                        View Item
                     </a>
                 </div>
 
                 <div class="component-item">
-                    <img src="images/screws.jpg" alt="Screws" class="component-image">
+                    <img src="images/screws.jpg" alt="Metal gear Servo" class="component-image">
                     <div class="component-details">
                         <h3>Machine Screws M3</h3>
                         <p>To put parts in place.</p>
                     </div>
                     <span class="component-quantity">x 1</span>
-                    <a href="https://www.amazon.com/Machine-Screws-Countersunk-Phillips-Assortment/dp/B0CCPH974T/ref=sr_1_4?crid=V0FA4DR1O0DA&dib=eyJ2IjoiMSJ9.v4_DHl230dNN33xQxWM_JJqKywBsS3auSGpz0wHevIrtZUI4zCP0ULTlhjVOG8hmNMr47WfflnQCp0zzoUPZ6YKMdCjLROsSBne-7JDwnf-UesoKUSS8i5UV60hlIo8bZq6DBM1rFbyVn756LqPanVbjkxzeMXmD25aeDdLQhZ5RA0Zbl3vuuzqqjFwBGSr4aVhDZl7V3Q7S4YwG2QxkTpyBS7Arj8BG7tgxKklC8IQ.QhhHwPmnNuYBA8tNYuLqkpBVVeXgnvW6YW2R7ANwPbk&dib_tag=se&keywords=m3+machine+screws&qid=1736247958&sprefix=M3+machine+%2Caps%2C456&sr=8-4" class="cart-button">
+                    <a href="https://www.amazon.com/Machine-Screws-Countersunk-Phillips-Assortment/dp/B0CCPH974T/ref=sr_1_4?crid=V0FA4DR1O0DA&dib=eyJ2IjoiMSJ9.v4_DHl230dNN33xQxWM_JJqKywBsS3auSGpz0wHevIrtZUI4zCP0ULTlhjVOG8hmNMr47WfflnQCp0zzoUPZ6YKMdCjLROsSBne-7JDwnf-UesoKUSS8i5UV60hlIo8bZq6DBM1rFbyVn756LqPanVbjkxzeMXmD25aeDdLQhZ5RA0Zbl3vuuzqqjFwBGSr4aVhDZl7V3Q7S4YwG2QxkTpyBS7Arj8BG7tgxKklC8IQ.QhhHwPmnNuYBA8tNYuLqkpBVVeXgnvW6YW2R7ANwPbk&dib_tag=se&keywords=m3+machine+screws&qid=1736247958&sprefix=M3+machine+%2Caps%2C456&sr=8-4" target="_blank" rel="noopener noreferrer" class="cart-button">
                         <i class="cart-icon">🛒</i>
-                        Add to Cart
+                        View Item
                     </a>
                 </div>
 
                 <div class="component-item">
-                    <img src="images/soldering.jpg" alt="Soldering kit" class="component-image">
+                    <img src="images/soldering.jpg" alt="Metal gear Servo" class="component-image">
                     <div class="component-details">
                         <h3>Soldering kit</h3>
                         <p>To solder XT60 connectors to DC converter.</p>
                     </div>
                     <span class="component-quantity">x 1</span>
-                    <a href="https://amzn.to/4iXKlhk" class="cart-button">
+                    <a href="https://amzn.to/4iXKlhk" target="_blank" rel="noopener noreferrer" class="cart-button">
                         <i class="cart-icon">🛒</i>
-                        Add to Cart
+                        View Item
                     </a>
                 </div>
 
                 <div class="component-item">
-                    <img src="images/rods.jpg" alt="Rods" class="component-image">
+                    <img src="images/rods.jpg" alt="Metal gear Servo" class="component-image">
                     <div class="component-details">
                         <h3>Metal Rods</h3>
                         <p>Length = 100mm and Diameter = 4.6mm</p>
                     </div>
-                    <span class="component-quantity">x 3</span>
-                    <a href="https://fr.aliexpress.com/item/1005005995241789.html?spm=a2g0o.cart.0.0.18b9378d0IXIGX&mp=1&pdp_npi=5%40dis%21AED%21AED%2035.12%21AED%2022.83%21%21%21%21%21%4021010d9017449256095343841e9d3e%2112000035228314923%21ct%21AE%212041467628%21%212%210&gatewayAdapt=glo2fra" class="cart-button">
+                    <span class="component-quantity">x 1</span>
+                    <a href="https://fr.aliexpress.com/item/1005005995241789.html?spm=a2g0o.cart.0.0.18b9378d0IXIGX&mp=1&pdp_npi=5%40dis%21AED%21AED%2035.12%21AED%2022.83%21%21%21%21%21%4021010d9017449256095343841e9d3e%2112000035228314923%21ct%21AE%212041467628%21%212%210&gatewayAdapt=glo2fra" target="_blank" rel="noopener noreferrer" class="cart-button">
                         <i class="cart-icon">🛒</i>
-                        Add to Cart
+                        View Item
                     </a>
                 </div>
 
@@ -392,305 +395,80 @@
                         <p>Very cheap and beginner friendly.</p>
                     </div>
                     <span class="component-quantity">x 1</span>
-                    <a href="https://amzn.to/4a5rg8O" class="cart-button">
+                    <a href="https://amzn.to/4a5rg8O" target="_blank" rel="noopener noreferrer" class="cart-button">
                         <i class="cart-icon">🛒</i>
-                        Add to Cart
+                        View Item
                     </a>
                 </div>
 
             </div>
-        </div>
+        </section>
+
+        <!-- Support Section -->
+        <section class="support-section download-section-minimal">
+            <h2>Support the Project</h2>
+            <p>If you find TARS WIZARD helpful, consider supporting its development.</p>
+            <a href="https://www.buymeacoffee.com/DhruvG24" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.buymeacoffee.com/button-api/?text=Support AI Revolution&emoji=🤖&slug=DhruvG24&button_colour=000000&font_colour=ffffff&font_family=Poppins&outline_colour=ffffff&coffee_colour=FFDD00" alt="Buy Me A Coffee" />
+            </a>
+        </section>
     </main>
 
-    <div id="auth-message" class="auth-message">
-        <h2>Please Login or Sign Up</h2>
-        <p>You need to be logged in to access downloads</p>
-    </div>
-
-    <!-- Replace the old login form with this -->
-    <div id="login-form" class="container auth-modal">
-      <div class="form-container">
-        <button class="close-btn" onclick="document.getElementById('login-form').style.display='none'"></button>
-        <p class="title">Welcome back</p>
-        <form class="form">
-          <input type="email" class="input" placeholder="Email" id="login-email">
-          <input type="password" class="input" placeholder="Password" id="login-password">
-          <p class="page-link">
-            <span class="page-link-label">Forgot Password?</span>
-          </p>
-          <!-- Add terms checkbox -->
-          <div class="terms-container" style="margin-bottom: 15px; font-size: 14px;">
-            <input type="checkbox" id="terms-checkbox" required>
-            <label for="terms-checkbox">
-              I agree to the <a href="#" id="terms-link" style="color: #007bff; text-decoration: none;">Terms and Conditions</a>
-            </label>
-          </div>
-          <button class="form-btn" id="login-submit" type="button">Log in</button>
-        </form>
-        <p class="sign-up-label">
-          Don't have an account?<span class="sign-up-link">Sign up</span>
-        </p>
-        <div class="buttons-container">
-          <div class="google-login-button">
-            <svg stroke="currentColor" fill="currentColor" stroke-width="0" version="1.1" x="0px" y="0px" class="google-icon" viewBox="0 0 48 48" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
-              <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12 c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24 c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path>
-              <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657 C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path>
-              <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36 c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path>
-              <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571 c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path>
-            </svg>
-            <span>Log in with Google</span>
-          </div>
+    <footer class="site-footer">
+        <div class="footer-content">
+            <p>&copy; <span id="current-year"></span> TARS WIZARD. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="index.html">Home</a> |
+                <a href="downloads.html">Downloads</a>
+            </div>
         </div>
-      </div>
-    </div>
-    
-    <!-- Fix the signup form Apple button -->
-    <div id="signup-form" class="container auth-modal">
-      <div class="form-container">
-        <button class="close-btn" onclick="document.getElementById('signup-form').style.display='none'"></button>
-        <p class="title">Create account</p>
-        <form class="form">
-          <input type="text" class="input" placeholder="Name" id="signup-name">
-          <input type="email" class="input" placeholder="Email" id="signup-email">
-          <input type="password" class="input" placeholder="Password" id="signup-password">
-          <!-- Add terms checkbox -->
-          <div class="terms-container" style="margin-bottom: 15px; font-size: 14px;">
-            <input type="checkbox" id="terms-checkbox-signup" required>
-            <label for="terms-checkbox-signup">
-              I agree to the <a href="#" id="terms-link-signup" style="color: #007bff; text-decoration: none;">Terms and Conditions</a>
-            </label>
-          </div>
-          <button class="form-btn" id="signup-submit" type="button">Create account</button>
-        </form>
-        <p class="sign-up-label">
-          Already have an account?<span class="sign-up-link">Log in</span>
-        </p>
-        <div class="buttons-container">
-          <div class="google-login-button">
-            <svg stroke="currentColor" fill="currentColor" stroke-width="0" version="1.1" x="0px" y="0px" class="google-icon" viewBox="0 0 48 48" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
-              <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12 c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24 c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path>
-              <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657 C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path>
-              <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36 c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path>
-              <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571 c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path>
-            </svg>
-            <span>Sign up with Google</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Add the form switching and Google Sign In script before the closing body tag -->
-    <script>
-      // Get the form elements
-      const loginForm = document.getElementById('login-form');
-      const signupForm = document.getElementById('signup-form');
-
-      // Get the switch links
-      const toSignupLink = loginForm.querySelector('.sign-up-link');
-      const toLoginLink = signupForm.querySelector('.sign-up-link');
-
-      // Get Google login buttons
-      const loginGoogleBtn = loginForm.querySelector('.google-login-button');
-      const signupGoogleBtn = signupForm.querySelector('.google-login-button');
-
-      // Add click handlers for switching forms
-      toSignupLink.addEventListener('click', () => {
-        loginForm.style.display = 'none';
-        signupForm.style.display = 'flex';
-      });
-
-      toLoginLink.addEventListener('click', () => {
-        signupForm.style.display = 'none';
-        loginForm.style.display = 'flex';
-      });
-
-      // Add click handlers for Google sign-in
-      loginGoogleBtn.addEventListener('click', async () => {
-        try {
-          await window.handleGoogleSignIn();
-        } catch (error) {
-          console.error("Login Google button error:", error);
-        }
-      });
-
-      signupGoogleBtn.addEventListener('click', async () => {
-        try {
-          await window.handleGoogleSignIn();
-        } catch (error) {
-          console.error("Signup Google button error:", error);
-        }
-      });
-    </script>
+    </footer>
 
     <script>
-        // Initialize Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyBOEOxU866-jIoT0KIO-hBG3GbUaTEnsQg",
-            authDomain: "fir-forums-54bdb.firebaseapp.com",
-            projectId: "fir-forums-54bdb",
-            storageBucket: "fir-forums-54bdb.firebasestorage.app",
-            messagingSenderId: "159128608485",
-            appId: "1:159128608485:web:b68c2b41f4ba97c28d3e0c",
-            measurementId: "G-J50YZC2H2L"
-        };
+        // --- Navbar Scroll Behavior ---
+        let lastScrollTop = 0;
+        const navbar = document.getElementById('main-navbar');
+        const scrollThreshold = 50; // Only hide after scrolling down 50px
 
-        if(typeof firebase !== 'undefined') {
-            const app = firebase.initializeApp(firebaseConfig);
-            const auth = firebase.auth();
+        window.addEventListener('scroll', function() {
+            let currentScroll = window.pageYOffset || document.documentElement.scrollTop;
 
-            auth.onAuthStateChanged((user) => {
-                const content = document.getElementById('content');
-                const authMessage = document.getElementById('auth-message');
-                const userEmailElement = document.getElementById("user-email");
-                const loginBtn = document.getElementById("login-btn");
-                const signupBtn = document.getElementById("signup-btn");
-                const logoutBtn = document.getElementById("logout-btn");
-
-                if (user) {
-                    // Get username from database
-                    firebase.database().ref('users/' + user.uid).once('value')
-                        .then((snapshot) => {
-                            const userData = snapshot.val();
-                            content.style.display = 'block';
-                            authMessage.style.display = 'none';
-                            userEmailElement.style.display = "inline-block";
-                            userEmailElement.textContent = userData?.username || user.email;
-                            loginBtn.style.display = "none";
-                            signupBtn.style.display = "none";
-                            logoutBtn.style.display = "inline-block";
-                        })
-                        .catch((error) => {
-                            console.error("Error getting username:", error);
-                            // Fallback to email if error occurs
-                            userEmailElement.textContent = user.email;
-                        });
-                } else {
-                    content.style.display = 'none';
-                    authMessage.style.display = 'block';
-                    userEmailElement.style.display = "none";
-                    loginBtn.style.display = "inline-block";
-                    signupBtn.style.display = "inline-block";
-                    logoutBtn.style.display = "none";
+            if (currentScroll > lastScrollTop && currentScroll > scrollThreshold) {
+                // Scrolling Down
+                if (navbar) {
+                    navbar.classList.add('navbar-hidden');
                 }
-            });
-
-            function downloadFile(filePath) {
-                if (!auth.currentUser) {
-                    alert('Please login to download files');
-                    return;
+            } else {
+                // Scrolling Up or near top
+                if (navbar) {
+                    navbar.classList.remove('navbar-hidden');
                 }
-                const link = document.createElement('a');
-                link.href = filePath;
-                link.download = filePath.split('/').pop();
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+            }
+            // For Mobile or negative scrolling
+            lastScrollTop = currentScroll <= 0 ? 0 : currentScroll;
+        }, false);
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const content = document.getElementById('content');
+            if (content) {
+                content.style.display = 'block'; // Ensure content is visible
+            }            // Event listeners for download buttons (previously in auth-check.js or similar)
+            const downloadCodeBtn = document.getElementById('download-code-btn');
+            if (downloadCodeBtn) {
+                downloadCodeBtn.addEventListener('click', () => {
+                    window.open('https://github.com/DhruvGoswami10/TARS-files', '_blank');
+                });
             }
 
-            // Login button click handler
-            document.getElementById("login-btn").addEventListener("click", () => {
-                document.getElementById("login-form").style.display = "flex";
-            });
-
-            // Login form submit handler
-            document.getElementById("login-submit").addEventListener("click", () => {
-                const email = document.getElementById("login-email").value;
-                const password = document.getElementById("login-password").value;
-                
-                auth.signInWithEmailAndPassword(email, password)
-                    .then(() => {
-                        document.getElementById("login-form").style.display = "none";
-                    })
-                    .catch((error) => alert(error.message));
-            });
-
-            // Signup button click handler
-            document.getElementById("signup-btn").addEventListener("click", () => {
-                document.getElementById("signup-form").style.display = "flex";
-            });
-
-            // Signup form submit handler
-            document.getElementById("signup-submit").addEventListener("click", () => {
-                const email = document.getElementById("signup-email").value;
-                const password = document.getElementById("signup-password").value;
-                
-                auth.createUserWithEmailAndPassword(email, password)
-                    .then(() => {
-                        document.getElementById("signup-form").style.display = "none";
-                    })
-                    .catch((error) => alert(error.message));
-            });
-
-            // Logout button click handler
-            document.getElementById("logout-btn").addEventListener("click", () => {
-                auth.signOut();
-            });
-
-            // Close modals when clicking outside
-            window.onclick = (event) => {
-                if (event.target.classList.contains('container')) {
-                    event.target.style.display = 'none';
-                }
-            };
-        }
-    </script>
-
-    <!-- Add this new modal for Terms and Conditions before closing body tag -->
-    <div id="terms-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
-      <div class="modal-content" style="background: white; margin: 15% auto; padding: 20px; width: 70%; max-width: 700px; border-radius: 8px;">
-        <h2>Terms and Conditions</h2>
-        <div style="max-height: 400px; overflow-y: auto; margin: 20px 0;"></div>
-          <p>1. By using TARS AI, you agree to comply with all applicable laws and regulations.</p>
-          <p>2. Users are responsible for maintaining the confidentiality of their account credentials.</p>
-          <p>3. The content provided through TARS AI is for personal, non-commercial use only.</p>
-          <p>4. Users may not redistribute, modify, or reverse engineer any downloaded content.</p>
-          <p>5. TARS AI reserves the right to modify or terminate services at any time.</p>
-        </div>
-        <button id="close-terms" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button>
-      </div>
-    </div>
-
-    <!-- Add this script section just before the closing body tag -->
-    <script>
-      // Terms and Conditions functionality
-      document.getElementById('terms-link').addEventListener('click', function(e) {
-        e.preventDefault();
-        document.getElementById('terms-modal').style.display = 'block';
-      });
-
-      document.getElementById('terms-link-signup').addEventListener('click', function(e) {
-        e.preventDefault();
-        document.getElementById('terms-modal').style.display = 'block';
-      });
-
-      document.getElementById('close-terms').addEventListener('click', function() {
-        document.getElementById('terms-modal').style.display = 'none';
-      });
-
-      // Update login submit handler to check for terms acceptance
-      document.getElementById('login-submit').addEventListener('click', function() {
-        if (!document.getElementById('terms-checkbox').checked) {
-          alert('Please accept the Terms and Conditions to continue');
-          return;
-        }
-        // ... existing login code ...
-      });
-
-      // Update signup submit handler to check for terms acceptance
-      document.getElementById('signup-submit').addEventListener('click', function() {
-        if (!document.getElementById('terms-checkbox-signup').checked) {
-          alert('Please accept the Terms and Conditions to continue');
-          return;
-        }
-        // ... existing signup code ...
-      });
-
-      // Close modal when clicking outside
-      window.onclick = function(event) {
-        if (event.target == document.getElementById('terms-modal')) {
-          document.getElementById('terms-modal').style.display = 'none';
-        }
-      };
+            const downloadExeBtn = document.getElementById('download-exe-btn');
+            if (downloadExeBtn) {
+                downloadExeBtn.addEventListener('click', () => {
+                    // Add the correct path to the EXE file if it exists, or disable/hide the button
+                    alert('EXE download not available yet.'); 
+                });
+            }
+        });
     </script>
 </body>
 </html>
