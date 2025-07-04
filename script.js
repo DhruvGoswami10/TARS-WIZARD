@@ -1,7 +1,6 @@
 // Import the functions you need from the SDKs you need
 // Initialize Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyBOEOxU866-jIoT0KIO-hBG3GbUaTEnsQg", 
   authDomain: "fir-forums-54bdb.firebaseapp.com",
   projectId: "fir-forums-54bdb",
   storageBucket: "fir-forums-54bdb.firebasestorage.app",
