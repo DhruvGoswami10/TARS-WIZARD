@@ -252,6 +252,7 @@ spline-viewer {
     display: flex; /* Ensure flex display */
     justify-content: space-between; /* Space out brand, links, auth */
     align-items: center; /* Vertically align items */
+    position: relative;
 }
 
 .nav-brand {
@@ -265,6 +266,39 @@ spline-viewer {
 
 .nav-brand:hover {
     color: var(--accent-gold);
+}
+
+/* Mobile menu toggle button */
+.nav-toggle {
+    display: none;
+    flex-direction: column;
+    cursor: pointer;
+    padding: 0.5rem;
+    background: none;
+    border: none;
+    z-index: 101;
+}
+
+.nav-toggle span {
+    display: block;
+    width: 25px;
+    height: 3px;
+    background-color: var(--text-light);
+    margin: 3px 0;
+    transition: 0.3s;
+    transform-origin: center;
+}
+
+.nav-toggle.active span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+}
+
+.nav-toggle.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.nav-toggle.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -6px);
 }
 
 .nav-links {
@@ -1727,726 +1761,169 @@ spline-viewer {
         display: none; /* Hide links by default on small screens */
     }
 
-    .auth-buttons-nav {
-        /* Adjust auth button display if needed */
-    }
-
     .download-grid {
         grid-template-columns: 1fr; /* Stack items vertically */
     }
 }
 
-/* --- Redesigned Auth Modal Styles --- */
-
-/* General Modal Container */
-.auth-modal { /* Targets both #login-form and #signup-form */
-    display: none; /* Keep hidden by default */
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0, 0, 0, 0.7); /* Slightly darker overlay */
-    justify-content: center;
-    align-items: center;
-    padding: 20px; /* Add padding for smaller screens */
-}
-
-/* Form Container within the Modal */
-.auth-modal .form-container {
-    background: linear-gradient(145deg, #1e1e2f, #1a1a2a); /* Subtle gradient */
-    margin: auto;
-    padding: 40px 35px; /* Increased padding */
-    border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border */
-    width: 100%; /* Responsive width */
-    max-width: 450px; /* Limit max width */
-    border-radius: 12px; /* More rounded corners */
-    position: relative;
-    color: var(--text-light);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); /* Softer shadow */
-    text-align: center; /* Center align content */
-}
-
-/* Close Button */
-.auth-modal .close-btn {
-    color: var(--text-medium); /* Use medium grey */
-    position: absolute;
-    top: 15px; /* Adjust position */
-    right: 15px;
-    font-size: 24px; /* Slightly smaller */
-    font-weight: normal; /* Less bold */
-    cursor: pointer;
-    transition: color 0.3s ease, transform 0.3s ease;
-    line-height: 1; /* Ensure consistent alignment */
-}
-
-.auth-modal .close-btn:hover,
-.auth-modal .close-btn:focus {
-    color: var(--text-light); /* Lighter on hover */
-    transform: rotate(90deg); /* Add subtle rotation */
-}
-
-/* Title */
-.auth-modal .title {
-    font-size: 1.8rem; /* Larger title */
-    font-weight: 700; /* Bolder */
-    color: var(--text-light);
-    margin-bottom: 25px; /* Increased spacing */
-    display: block; /* Ensure it takes full width */
-}
-
-/* Form Element */
-.auth-modal .form {
-    display: flex;
-    flex-direction: column;
-    gap: 18px; /* Space between inputs/buttons */
-}
-
-/* Input Fields */
-.auth-modal .input {
-    background-color: rgba(255, 255, 255, 0.05); /* Very subtle background */
-    border: 1px solid rgba(255, 255, 255, 0.15); /* Slightly more visible border */
-    border-radius: 8px; /* Rounded inputs */
-    padding: 14px 18px; /* Adjust padding */
-    font-size: 1rem;
-    color: var(--text-light);
-    width: 100%;
-    transition: border-color 0.3s ease, background-color 0.3s ease;
-    outline: none; /* Remove default outline */
-}
-
-.auth-modal .input::placeholder {
-    color: var(--text-medium);
-    opacity: 0.8;
-}
-
-.auth-modal .input:focus {
-    background-color: rgba(255, 255, 255, 0.08);
-    border-color: var(--accent-gold); /* Highlight with accent color */
-}
-
-/* Links (Forgot Password, Terms) */
-.auth-modal .page-link {
-    font-size: 0.9rem;
-    color: var(--text-medium);
-    text-align: right; /* Align forgot password right */
-    margin-top: -10px; /* Adjust spacing */
-    margin-bottom: 5px;
-}
-
-.auth-modal .page-link-label {
-    cursor: pointer;
-    color: var(--accent-blue);
-    text-decoration: none;
-    transition: color 0.3s ease;
-}
-
-.auth-modal .page-link-label:hover {
-    color: var(--text-light);
-    text-decoration: underline;
-}
-
-/* Terms Checkbox Area */
-.auth-modal .terms-container {
-    font-size: 0.85rem; /* Smaller text */
-    color: var(--text-medium);
-    display: flex;
-    align-items: center;
-    justify-content: center; /* Center align */
-    gap: 8px;
-    margin-top: 0; /* Adjust spacing */
-    margin-bottom: 10px;
-}
-
-.auth-modal .terms-container input[type="checkbox"] {
-    accent-color: var(--accent-gold); /* Style checkbox */
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-}
-
-.auth-modal .terms-container label {
-    cursor: pointer;
-}
-
-.auth-modal .terms-container a {
-    color: var(--accent-blue);
-    text-decoration: none;
-    transition: color 0.3s ease;
-}
-
-.auth-modal .terms-container a:hover {
-    color: var(--text-light);
-    text-decoration: underline;
-}
-
-/* Primary Form Button (Login/Signup) */
-.auth-modal .form-btn {
-    background-color: var(--accent-gold);
-    color: var(--background-dark);
-    border: none;
-    border-radius: 8px;
-    padding: 14px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.2s ease;
-    width: 100%;
-    margin-top: 10px; /* Add space above */
-}
-
-.auth-modal .form-btn:hover {
-    background-color: #fff; /* Lighter gold/white on hover */
-    transform: translateY(-2px); /* Subtle lift */
-}
-
-.auth-modal .form-btn:active {
-    transform: translateY(0); /* Press down effect */
-}
-
-/* Sign Up/Login Switch Label */
-.auth-modal .sign-up-label {
-    margin-top: 25px; /* More space above */
-    font-size: 0.9rem;
-    color: var(--text-medium);
-}
-
-.auth-modal .sign-up-link {
-    color: var(--accent-blue);
-    font-weight: 500;
-    cursor: pointer;
-    margin-left: 5px;
-    transition: color 0.3s ease;
-}
-
-.auth-modal .sign-up-link:hover {
-    color: var(--text-light);
-    text-decoration: underline;
-}
-
-/* OR Separator (Optional but nice) */
-.auth-modal .separator {
-    display: flex;
-    align-items: center;
-    text-align: center;
-    color: var(--text-medium);
-    margin: 20px 0; /* Adjust spacing */
-    font-size: 0.85rem;
-}
-
-.auth-modal .separator::before,
-.auth-modal .separator::after {
-    content: '';
-    flex: 1;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.auth-modal .separator:not(:empty)::before {
-    margin-right: .5em;
-}
-
-.auth-modal .separator:not(:empty)::after {
-    margin-left: .5em;
-}
-
-/* Google Login Button Container */
-.auth-modal .buttons-container {
-    margin-top: 0; /* Remove default margin if separator is used */
-}
-
-.auth-modal .google-login-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px; /* Space between icon and text */
-    background-color: rgba(255, 255, 255, 0.08); /* Subtle background */
-    color: var(--text-light);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 8px;
-    padding: 12px; /* Adjust padding */
-    font-size: 0.95rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background-color 0.3s ease, border-color 0.3s ease;
-    width: 100%;
-}
-
-.auth-modal .google-login-button:hover {
-    background-color: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.25);
-}
-
-.auth-modal .google-icon {
-    width: 20px; /* Adjust icon size */
-    height: 20px;
-}
-
-/* --- End Redesigned Auth Modal Styles --- */
-
-/* Modal Styles */
-.modal, #signup-form, #login-form, #guidelines-popup, #terms-modal, #new-post-modal {
-    display: none; /* Hidden by default */
-    position: fixed; /* Stay in place */
-    z-index: 1000; /* Sit on top */
-    left: 0;
-    top: 0;
-    width: 100%; /* Full width */
-    height: 100%; /* Full height */
-    overflow: auto; /* Enable scroll if needed */
-    background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
-    justify-content: center;
-    align-items: center;
-}
-
-.modal-content, .form-container, .popup-content {
-    background-color: #2c2c2e; /* Dark background for modal content */
-    margin: auto;
-    padding: 30px;
-    border: 1px solid #888;
-    width: 80%;
-    max-width: 600px; /* Max width */
-    border-radius: 8px;
-    position: relative;
-    color: #e0e0e0; /* Light text color */
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-}
-
-/* Close Button Style */
-.close-btn {
-    color: #aaa;
-    position: absolute;
-    top: 10px;
-    right: 20px;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.close-btn:hover,
-.close-btn:focus {
-    color: #fff; /* White on hover */
-    text-decoration: none;
-    cursor: pointer;
-}
-
-/* Specific styling for new post modal if needed */
-
-/* Style for Guidelines Popup */
-#guidelines-popup .popup-content {
-    max-width: 700px;
-    text-align: left;
-}
-
-#guidelines-popup h2 {
-    margin-top: 0;
-    color: #00aaff; /* Accent color */
-}
-
-#guidelines-popup ul {
-    list-style: disc;
-    margin-left: 20px;
-}
-
-#guidelines-popup button#understand-btn {
-    display: block;
-    margin: 20px auto 0;
-    padding: 10px 20px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-#guidelines-popup button#understand-btn:hover {
-    background-color: #0056b3;
-}
-
-/* Style for Terms Modal */
-#terms-modal .modal-content {
-    max-height: 80vh; /* Limit height */
-    overflow-y: auto; /* Add scroll for long content */
-}
-
-#terms-modal h2 {
-    margin-top: 0;
-    color: #00aaff;
-}
-
-#terms-modal p, #terms-modal li {
-    line-height: 1.6;
-}
-
-#terms-modal button#close-terms-btn {
-    display: block;
-    margin: 20px auto 0;
-    padding: 10px 20px;
-    background-color: #6c757d; /* Grey color */
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-#terms-modal button#close-terms-btn:hover {
-    background-color: #5a6268;
-}
-
-/* --- Responsive Adjustments --- */
-@media screen and (max-width: 992px) {
-    .community-layout {
-        flex-direction: column;
-        padding: 0 1rem;
-    }
-
-    .sidebar-nav {
-        position: static; /* Don't stick on smaller screens */
-        width: 100%;
-        margin-bottom: 1.5rem;
-    }
-
-    .sidebar-nav ul {
-        display: flex;
-        flex-wrap: wrap; /* Allow wrapping */
-        gap: 0.5rem;
-    }
-
-    .sidebar-nav li {
-        margin-bottom: 0;
-    }
-
-    .sidebar-link {
-        padding: 0.5rem 0.8rem;
-        font-size: 0.9rem;
-    }
-}
-
 @media screen and (max-width: 768px) {
-    /* Adjust navbar auth buttons for smaller screens */
-    .auth-buttons-nav {
-        gap: 0.5rem;
+    /* Ensure better text readability on mobile */
+    body {
+        font-size: 16px;
+        line-height: 1.5;
     }
-    .auth-buttons-nav button {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.85rem;
+    
+    /* Improve button touch targets */
+    button, a, .nav-links a {
+        min-height: 44px;
+        min-width: 44px;
     }
-    .auth-buttons-nav .user-email {
-        display: none; /* Hide email on small screens */
-    }
-
-    .section-header h1 {
-        font-size: 1.5rem;
-    }
-
-    .section-header .create-post-button {
-        padding: 0.5rem 1rem;
-        font-size: 0.9rem;
-    }
-
-    .post {
-        padding: 0.8rem 1rem;
-    }
-
-    .post-footer {
-        flex-direction: column; /* Stack meta and actions */
-        align-items: flex-start;
-        gap: 0.5rem;
-    }
-
-    .post-actions {
-        margin-top: 0.5rem; /* Add space when stacked */
-        width: 100%;
-        justify-content: flex-end; /* Align actions to the right */
-    }
-
-    #post-content .post-header h2 {
-        font-size: 1.5rem;
-    }
-
-    #post-content .post-content {
-        font-size: 0.95rem;
-    }
-
-    .reply {
-        padding: 0.8rem 1rem;
-    }
-
-    .reply-footer {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.4rem;
-    }
-
-    .reply-actions {
-        margin-top: 0.4rem;
-        width: 100%;
-        justify-content: flex-end;
-    }
-}
-
-@media screen and (max-width: 480px) {
-    .navbar-content {
-        /* Keep stacking from index.html styles */
-    }
-    .auth-buttons-nav {
-        margin-top: 0.5rem; /* Add space when stacked */
-        justify-content: center;
-        width: 100%;
-    }
-
-    .community-layout {
-        margin-top: 0.5rem;
-    }
-
-    .sidebar-nav h2 {
-        font-size: 1.1rem;
-        margin-bottom: 1rem;
-    }
-
-    .sidebar-nav ul {
-        justify-content: center;
-    }
-
-    .community-section {
+    
+    /* Better spacing for mobile */
+    .hero {
         padding: 1rem;
+        min-height: 60vh;
     }
-
-    .post-meta {
-        flex-wrap: wrap; /* Allow meta items to wrap */
-        gap: 0.3rem 0.8rem; /* Adjust vertical/horizontal gap */
+    
+    .hero-content {
+        height: 50vh;
     }
-
-    .post-actions button span { /* Hide text on small buttons */
-        display: none;
+    
+    /* Improve footer on mobile */
+    .site-footer {
+        padding: 2rem 1rem;
     }
-
-    .post-actions .reply-action-btn {
-        padding: 0.5rem; /* Slightly larger tap target */
+    
+    .social-card-container {
+        gap: 1rem;
     }
-
-    #reply-btn,
-    #post-btn {
-        width: 100%; /* Full width button */
-        text-align: center;
-        float: none;
-        margin-top: 1.5rem;
+    
+    .socialContainer {
+        width: 50px;
+        height: 50px;
     }
 }
 
-/* Add new responsive styles for the minimalist design */
+/* Debug helper to verify mobile breakpoints are working */
 @media screen and (max-width: 768px) {
-    .hero-content {
-        height: 50vh; /* Adjust height for smaller screens */
+    body::before {
+        content: "Mobile view active";
+        position: fixed;
+        top: 0;
+        left: 0;
+        background: rgba(255, 0, 0, 0.8);
+        color: white;
+        padding: 5px 10px;
+        font-size: 12px;
+        z-index: 9999;
+        display: none; /* Hide by default, uncomment for debugging */
     }
+}
 
-    .footer-content {
-        gap: 2rem;
-    }
-
-    .footer-stats {
-        flex-direction: column; /* Stack stats vertically */
-        gap: 1.5rem;
-    }
-
-    .stat-number {
-        font-size: 1.8rem;
-    }
-
-    .socialContainer {
-        width: 40px;
-        height: 40px;
-    }
-
-    .socialSvg {
-        width: 18px;
-        height: 18px;
-    }
-
-    /* Navbar adjustments */
-    .main-navbar {
-        padding: 0.8rem 1rem;
-    }
-
-    .nav-brand {
-        font-size: 1.3rem;
+/* Additional mobile navigation improvements */
+@media screen and (max-width: 768px) {
+    .nav-toggle {
+        display: flex; /* Show the toggle button */
     }
 
     .nav-links {
-        gap: 1rem;
+        display: none; /* Keep links hidden by default */
+        flex-direction: column;
+        width: 100%;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        background-color: rgba(10, 10, 15, 0.9);
+        padding: 1rem;
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+    }
+
+    .nav-links.active {
+        display: flex; /* Show links when active */
     }
 
     .nav-links a {
-        font-size: 0.9rem;
+        padding: 0.8rem 1.2rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .nav-links a:last-child {
+        border-bottom: none; /* Remove border from last link */
+    }
+
+    .auth-buttons-nav {
+        flex-direction: column;
+        width: 100%;
+        gap: 0.8rem;
+    }
+
+    .auth-buttons-nav button {
+        width: 100%;
+        padding: 0.7rem;
     }
 }
 
-@media screen and (max-width: 480px) {
-    .hero-content {
-        height: 45vh;
-        padding: 1rem 0.5rem;
-    }
-
-    .site-footer {
-        padding: 2rem 0.5rem 1.5rem;
-    }
-
-    .footer-content {
-        gap: 1.5rem;
-    }
-
-    .footer-links .terms-btn {
-        padding: 0.5rem 1rem;
-        font-size: 0.8rem;
-    }
-
-    .copyright {
-        font-size: 0.8rem;
-    }
-
-    /* Navbar adjustments for very small screens */
+/* Ensure consistent spacing and alignment in mobile nav */
+@media screen and (max-width: 768px) {
     .navbar-content {
-        flex-direction: column; /* Stack brand and links */
-        gap: 0.5rem;
-        /* Centering happens automatically due to flex-direction: column and align-items: center (default) */
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 1rem;
+    }
+
+    .nav-brand {
+        margin-bottom: 1rem;
+    }
+
+    .nav-toggle {
+        margin-bottom: 1rem;
+    }
+
+    .nav-links {
+        width: 100%;
+    }
+
+    .nav-links a {
+        padding: 0.8rem 1.2rem;
+        text-align: left;
+    }
+
+    .auth-buttons-nav {
+        width: 100%;
+        margin-top: 1rem;
     }
 }
 
-/* Chat Styles - Dark Theme */
-#chat-container {
-    width: 90%; /* Use percentage for responsiveness */
-    max-width: 900px; /* Adjust max-width for better readability */
-    margin: 40px auto; /* Increased top/bottom margin, auto centers horizontally */
-    border: 1px solid #444;
-    padding: 20px; /* Increased padding */
-    border-radius: 10px; /* Slightly more rounded */
-    background-color: #2b2b2b;
-    color: #e0e0e0;
-    display: flex; /* Use flexbox for layout */
-    flex-direction: column; /* Stack elements vertically */
-    height: calc(100vh - 180px); /* Example: Calculate height based on viewport minus header/footer/margins */
-    min-height: 500px; /* Ensure a minimum height */
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); /* Add subtle shadow */
+/* --- Miscellaneous Styles --- */
+.hidden {
+    display: none !important;
 }
 
-#chat-messages {
-    flex-grow: 1; /* Allow message area to take up available space */
-    overflow-y: auto; /* Keep scroll for messages */
-    margin-bottom: 15px; /* Increased space below messages */
-    padding: 15px; /* Padding inside the message area */
-    display: flex;
-    flex-direction: column;
-    gap: 12px; /* Use gap for spacing between messages */
-    background-color: #1e1e1e;
-    border-radius: 6px; /* Rounded corners for message area */
-    border: none; /* Remove the bottom border here */
+.visible {
+    display: block !important;
 }
 
-.message {
-    padding: 10px 15px; /* Adjusted padding */
-    border-radius: 18px; /* More rounded bubbles */
-    max-width: 75%; /* Slightly increase max-width */
-    word-wrap: break-word;
-    color: #fff;
-    line-height: 1.4; /* Adjust line height */
-    /* Removed margin-bottom, using gap in parent now */
+/* Smooth scroll for Safari */
+html {
+    scroll-behavior: smooth;
 }
 
-.message.user {
-    background-color: #0b4f6c;
-    align-self: flex-end;
-    border-bottom-right-radius: 5px; /* Slightly flatten one corner */
+/* Focus styles for accessibility */
+:focus {
+    outline: 2px solid var(--accent-gold);
+    outline-offset: 2px;
 }
 
-.message.assistant {
-    background-color: #3a3a3a;
-    align-self: flex-start;
-    border-bottom-left-radius: 5px; /* Slightly flatten one corner */
+/* Custom property for transition duration */
+:root {
+    --transition-duration: 0.3s;
 }
 
-#chat-input-area {
-    display: flex;
-    align-items: center; /* Vertically align input and button */
-    margin-top: auto; /* Push input area to the bottom */
-    padding-top: 15px; /* Add padding above input area */
-    border-top: 1px solid #444; /* Add separator line */
+/* Apply transition to all elements (or specific ones) */
+* {
+    transition: all var(--transition-duration) ease;
 }
 
-#user-input {
-    flex-grow: 1;
-    padding: 12px 15px; /* Increased padding */
-    border: 1px solid #555;
-    border-radius: 20px; /* Pill shape */
-    margin-right: 10px; /* Increased space */
-    background-color: #333;
-    color: #e0e0e0;
-    font-size: 1rem; /* Ensure consistent font size */
-}
-
-#user-input::placeholder {
-    color: #888;
-}
-
-#send-button {
-    padding: 12px 20px; /* Adjusted padding */
-    background-color: #005a9e;
-    color: white;
-    border: none;
-    border-radius: 20px; /* Pill shape */
-    cursor: pointer;
-    font-size: 1rem;
-    transition: background-color 0.3s ease; /* Add transition */
-}
-
-#send-button:hover {
-    background-color: #007bff;
-}
-
-#send-button:disabled {
-    background-color: #555;
-    cursor: not-allowed;
-}
-
-#loading-indicator {
-    text-align: center;
-    padding: 10px 0; /* Add padding */
-    color: #aaa;
-    font-style: italic;
-    /* Position it absolutely or handle visibility differently if needed */
-}
-
-#error-message {
-    text-align: center;
-    padding: 10px 0; /* Add padding */
-    color: #ff6b6b;
-}
-
-/* Ensure main content area allows chat container to size correctly */
-main#main-content {
-    flex-grow: 1; /* Allow main to grow */
-    display: flex; /* Use flex */
-    flex-direction: column; /* Stack children vertically */
-}
-
-/* Adjust page header margin if needed */
-.page-header {
-    padding: 20px 0; /* Add vertical padding, remove horizontal */
-    text-align: center; /* Center the text */
-    border-bottom: 1px solid #444; /* Add a subtle separator */
-    margin-bottom: 30px; /* Space before chat container */
-}
-
-.page-header h1 {
-    font-size: 2rem; /* Slightly smaller H1 */
-    color: var(--text-light);
-    margin-bottom: 5px; /* Smaller margin below H1 */
-}
-
-.page-header p {
-    font-size: 1rem; /* Smaller paragraph text */
-    color: var(--text-medium);
-    margin: 0;
-}
+/* --- End of CSS Document --- */
