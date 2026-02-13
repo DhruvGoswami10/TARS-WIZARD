@@ -6,7 +6,7 @@
 
 TARS WIZARD is a complete, open-source guide to building a walking, talking replica of the TARS robot from Christopher Nolan's *Interstellar*. Everything you need is here — 3D print files, wiring diagrams, software, parts list, and step-by-step guides.
 
-[![Website](https://img.shields.io/badge/Website-TARS%20WIZARD-blue)](https://tars-wizard-backup.vercel.app)
+[![Website](https://img.shields.io/badge/Website-TARS%20WIZARD-blue)](https://tars-wizard.vercel.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-orange)](https://www.buymeacoffee.com/DhruvG24)
 
