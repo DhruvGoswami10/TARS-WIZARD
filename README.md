@@ -120,6 +120,10 @@ The voice system uses **Google Speech Recognition** to capture commands, **OpenA
 
 A **gamepad controller** (8BitDo recommended) connects via Bluetooth for manual movement control.
 
+## Project Deep Dive
+
+For a practical software roadmap (what to fix first, OpenClaw-lite direction, autonomy path, and enterprise considerations), see [docs/repo-deep-dive.md](docs/repo-deep-dive.md).
+
 ## Contributing
 
 Pull requests are welcome. For major changes, please open an issue first to discuss what you'd like to change.
