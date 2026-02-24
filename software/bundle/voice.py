@@ -7,10 +7,8 @@ import boto3
 import requests
 from pydub import AudioSegment, effects
 import io
-import re
 from datetime import datetime
 from pydub.playback import play
-import threading
 import sys
 import time
 import mechanism

@@ -3,7 +3,6 @@
 
 from evdev import InputDevice, categorize, ecodes
 import mechanism
-import sys
 
 device_path = '/dev/input/event3'  # Change this to your actual path
 
