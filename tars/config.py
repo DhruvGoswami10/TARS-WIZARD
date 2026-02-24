@@ -39,9 +39,6 @@ def env(key, default=None):
 
 # API Keys
 OPENAI_API_KEY = env("OPENAI_API_KEY", "")
-AWS_ACCESS_KEY = env("AWS_ACCESS_KEY", "")
-AWS_SECRET_KEY = env("AWS_SECRET_KEY", "")
-AWS_REGION = env("AWS_REGION", "us-east-1")
 WEATHER_API_KEY = env("WEATHER_API_KEY", "")
 CITY_NAME = env("CITY_NAME", "")
 

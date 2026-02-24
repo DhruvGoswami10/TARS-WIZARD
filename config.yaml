@@ -37,61 +37,64 @@ movement:
 voice:
   # Speech-to-text
   listen_timeout: 3          # seconds to wait for speech
-  # Text-to-speech (AWS Polly SSML)
-  speech_rate: "85%"
-  speech_pitch: "-2%"
-  # Post-processing (pydub)
+  # Text-to-speech (edge-tts — free, no API key needed)
+  # Rate and pitch use edge-tts format: "+0%" is normal, "-15%" is slower/lower
+  speech_rate: "-15%"
+  speech_pitch: "-10%"
+  # Post-processing (pydub) — these effects make the voice sound robotic like TARS
   playback_speed: 1.35
   low_pass_filter: 2000       # Hz
   volume_reduction: 2.5       # dB
   volume_boost: 6             # dB
 
 # ─── Language Support ───────────────────────────────────────
+# voice_id values are edge-tts voice names (run `edge-tts --list-voices` to see all)
+# en-US-GuyNeural is a deep male voice — combined with the effects above, sounds like TARS
 languages:
   english:
-    voice_id: Matthew
+    voice_id: en-US-GuyNeural
     movement_messages:
       forward: "Moving forward"
       left: "Turning left"
       right: "Turning right"
       neutral: "Returning to neutral position"
   spanish:
-    voice_id: Miguel
+    voice_id: es-ES-AlvaroNeural
     movement_messages:
       forward: "Moviendo hacia adelante"
       left: "Girando a la izquierda"
       right: "Girando a la derecha"
       neutral: "Volviendo a posicion neutral"
   french:
-    voice_id: Mathieu
+    voice_id: fr-FR-HenriNeural
     movement_messages:
       forward: "Avancer"
       left: "Tourner a gauche"
       right: "Tourner a droite"
       neutral: "Retour a la position neutre"
   german:
-    voice_id: Hans
+    voice_id: de-DE-ConradNeural
     movement_messages:
       forward: "Vorwarts bewegen"
       left: "Nach links drehen"
       right: "Nach rechts drehen"
       neutral: "Zuruck zur neutralen Position"
   italian:
-    voice_id: Giorgio
+    voice_id: it-IT-DiegoNeural
     movement_messages:
       forward: "Movimento in avanti"
       left: "Girando a sinistra"
       right: "Girando a destra"
       neutral: "Ritorno alla posizione neutra"
   portuguese:
-    voice_id: Cristiano
+    voice_id: pt-BR-AntonioNeural
     movement_messages:
       forward: "Movendo para frente"
       left: "Virando a esquerda"
       right: "Virando a direita"
       neutral: "Retornando a posicao neutra"
   japanese:
-    voice_id: Takumi
+    voice_id: ja-JP-KeitaNeural
     movement_messages:
       forward: "前進します"
       left: "左に曲がります"

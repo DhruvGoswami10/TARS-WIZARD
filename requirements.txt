@@ -7,9 +7,9 @@
 
 # AI & Language Models
 openai>=1.0.0
-boto3>=1.28.0
 
 # Voice & Audio
+edge-tts>=6.1.0
 SpeechRecognition>=3.10.0
 pydub>=0.25.1
 PyAudio>=0.2.13
