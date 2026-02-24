@@ -8,7 +8,6 @@ import boto3
 import requests
 from pydub import AudioSegment, effects
 import io
-import re
 from datetime import datetime
 from pydub.playback import play
 import threading
@@ -16,7 +15,7 @@ import sys
 import time
 import os
 import tkinter as tk
-from tkinter import scrolledtext, ttk
+from tkinter import scrolledtext
 from tkinter.font import Font
 
 # Try to import hardware-related modules, fallback if unavailable
@@ -31,7 +30,7 @@ except ImportError:
 
 # Try to import controller-related modules
 try:
-    from evdev import InputDevice, categorize, ecodes
+    from evdev import InputDevice, ecodes
     CONTROLLER_AVAILABLE = True
 except ImportError:
     print("Controller library (evdev) not found. Controller support disabled.")
