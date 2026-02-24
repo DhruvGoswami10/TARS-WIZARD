@@ -59,9 +59,11 @@ def generate_speech(text, language="english"):
 
 
 def modify_voice(audio_stream):
-    """Apply robotic TARS voice effects to audio."""
+    """Apply robotic TARS voice effects to audio (band-pass + speedup)."""
     sound = AudioSegment.from_file(audio_stream, format="mp3")
     sound = effects.speedup(sound, playback_speed=config.PLAYBACK_SPEED)
+    if config.HIGH_PASS_FILTER:
+        sound = sound.high_pass_filter(config.HIGH_PASS_FILTER)
     sound = effects.low_pass_filter(sound, config.LOW_PASS_FILTER)
     sound = sound - config.VOLUME_REDUCTION
     sound = sound + config.VOLUME_BOOST

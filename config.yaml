@@ -38,14 +38,16 @@ voice:
   # Speech-to-text
   listen_timeout: 3          # seconds to wait for speech
   # Text-to-speech (edge-tts — free, no API key needed)
-  # Rate and pitch use edge-tts format: "+0%" is normal, "-15%" is slower/lower
-  speech_rate: "-15%"
-  speech_pitch: "-10%"
+  # Rate uses percent format: "+0%" is normal, "-15%" is slower
+  # Pitch uses Hz format: "+0Hz" is normal, "-10Hz" is lower
+  speech_rate: "-10%"
+  speech_pitch: "-20Hz"
   # Post-processing (pydub) — these effects make the voice sound robotic like TARS
-  playback_speed: 1.35
-  low_pass_filter: 2000       # Hz
-  volume_reduction: 2.5       # dB
-  volume_boost: 6             # dB
+  playback_speed: 1.2
+  low_pass_filter: 3000       # Hz
+  high_pass_filter: 300       # Hz — band-pass with low_pass gives metallic TARS feel
+  volume_reduction: 3         # dB
+  volume_boost: 8             # dB
 
 # ─── Language Support ───────────────────────────────────────
 # voice_id values are edge-tts voice names (run `edge-tts --list-voices` to see all)

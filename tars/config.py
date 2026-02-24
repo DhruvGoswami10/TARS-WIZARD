@@ -63,12 +63,13 @@ ARM_DELAY = get("movement.arm_delay", 0.3)
 
 # Voice
 LISTEN_TIMEOUT = get("voice.listen_timeout", 3)
-SPEECH_RATE = get("voice.speech_rate", "85%")
-SPEECH_PITCH = get("voice.speech_pitch", "-2%")
-PLAYBACK_SPEED = get("voice.playback_speed", 1.35)
-LOW_PASS_FILTER = get("voice.low_pass_filter", 2000)
-VOLUME_REDUCTION = get("voice.volume_reduction", 2.5)
-VOLUME_BOOST = get("voice.volume_boost", 6)
+SPEECH_RATE = get("voice.speech_rate", "-10%")
+SPEECH_PITCH = get("voice.speech_pitch", "-20Hz")
+PLAYBACK_SPEED = get("voice.playback_speed", 1.2)
+LOW_PASS_FILTER = get("voice.low_pass_filter", 3000)
+HIGH_PASS_FILTER = get("voice.high_pass_filter", 300)
+VOLUME_REDUCTION = get("voice.volume_reduction", 3)
+VOLUME_BOOST = get("voice.volume_boost", 8)
 
 # AI
 AI_MODEL = get("ai.model", "gpt-4o-mini")
