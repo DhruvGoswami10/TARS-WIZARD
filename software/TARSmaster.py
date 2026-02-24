@@ -1,6 +1,6 @@
-# TARS Master Control — All-in-One Desktop Mode
-# Launches Tkinter GUI console, voice assistant, and controller listener
-# For headless Raspberry Pi deployment, see bundle/ directory instead
+# TARS Master Control — All-in-One Desktop Mode (DEPRECATED)
+# This file is kept for backward compatibility.
+# Use main.py instead:  python main.py
 #
 # Now uses shared tars/ package. This file provides the Tkinter GUI wrapper.
 
