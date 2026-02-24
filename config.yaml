@@ -1,0 +1,127 @@
+# TARS-WIZARD Configuration
+# All hardware settings, servo values, and preferences in one place.
+# API keys are loaded from .env (not this file).
+
+# ─── Servo Hardware ─────────────────────────────────────────
+# PCA9685 servo controller settings.
+# DO NOT change these values unless you've recalibrated your servos.
+servo:
+  i2c_address: 0x40
+  frequency: 50
+  channels:
+    torso: 0
+    left_arm: 3
+    right_arm: 4
+  positions:
+    up_height: 130
+    neutral_height: 0
+    down_height: -130
+    forward: 130
+    neutral: 0
+    backward: -130
+    left_arm_neutral: -28
+    right_arm_neutral: 28
+  # Pulse width range (microseconds) — standard for most hobby servos
+  pulse:
+    min: 1000
+    max: 2000
+
+# ─── Movement Timing ────────────────────────────────────────
+# Sleep durations (seconds) between servo commands during movement.
+# These are tuned for LD-3015MG servos. Adjust if using different servos.
+movement:
+  step_delay: 0.2
+  arm_delay: 0.3
+
+# ─── Voice Settings ─────────────────────────────────────────
+voice:
+  # Speech-to-text
+  listen_timeout: 3          # seconds to wait for speech
+  # Text-to-speech (AWS Polly SSML)
+  speech_rate: "85%"
+  speech_pitch: "-2%"
+  # Post-processing (pydub)
+  playback_speed: 1.35
+  low_pass_filter: 2000       # Hz
+  volume_reduction: 2.5       # dB
+  volume_boost: 6             # dB
+
+# ─── Language Support ───────────────────────────────────────
+languages:
+  english:
+    voice_id: Matthew
+    movement_messages:
+      forward: "Moving forward"
+      left: "Turning left"
+      right: "Turning right"
+      neutral: "Returning to neutral position"
+  spanish:
+    voice_id: Miguel
+    movement_messages:
+      forward: "Moviendo hacia adelante"
+      left: "Girando a la izquierda"
+      right: "Girando a la derecha"
+      neutral: "Volviendo a posicion neutral"
+  french:
+    voice_id: Mathieu
+    movement_messages:
+      forward: "Avancer"
+      left: "Tourner a gauche"
+      right: "Tourner a droite"
+      neutral: "Retour a la position neutre"
+  german:
+    voice_id: Hans
+    movement_messages:
+      forward: "Vorwarts bewegen"
+      left: "Nach links drehen"
+      right: "Nach rechts drehen"
+      neutral: "Zuruck zur neutralen Position"
+  italian:
+    voice_id: Giorgio
+    movement_messages:
+      forward: "Movimento in avanti"
+      left: "Girando a sinistra"
+      right: "Girando a destra"
+      neutral: "Ritorno alla posizione neutra"
+  portuguese:
+    voice_id: Cristiano
+    movement_messages:
+      forward: "Movendo para frente"
+      left: "Virando a esquerda"
+      right: "Virando a direita"
+      neutral: "Retornando a posicao neutra"
+  japanese:
+    voice_id: Takumi
+    movement_messages:
+      forward: "前進します"
+      left: "左に曲がります"
+      right: "右に曲がります"
+      neutral: "中立位置に戻ります"
+
+# ─── Personality ────────────────────────────────────────────
+personality:
+  humor: 50          # 0-100
+  honesty: 50        # 0-100
+  default_language: english
+
+# ─── AI Model ──────────────────────────────────────────────
+ai:
+  model: gpt-4o-mini
+  max_tokens: 50
+  temperature: 0.9
+
+# ─── Weather ────────────────────────────────────────────────
+weather:
+  api_url: "https://api.openweathermap.org/data/2.5/weather"
+  units: metric
+
+# ─── Controller ─────────────────────────────────────────────
+# Auto-detected on startup. Override here if needed.
+controller:
+  device_path: auto        # "auto" scans /dev/input/, or set explicit path
+  button_map:
+    move_forward: BTN_A
+    turn_right: BTN_B
+    turn_left: BTN_X
+    neutral: BTN_Y
+    stop: BTN_START
