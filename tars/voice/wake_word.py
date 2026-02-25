@@ -16,6 +16,7 @@ except ImportError:
 
 try:
     from openwakeword.model import Model as OWWModel
+    from openwakeword.utils import download_models as oww_download
 
     OWW_AVAILABLE = True
 except ImportError:
@@ -39,6 +40,10 @@ class WakeWordDetector:
 
         if OWW_AVAILABLE and PYAUDIO_AVAILABLE:
             try:
+                # Download models if not already present
+                print("Checking wake word models...")
+                oww_download()
+
                 # Use the built-in "hey_jarvis" model as closest match to "Hey TARS"
                 # Custom wake word models can be trained at https://github.com/dscripka/openwakeword
                 self._model = OWWModel(
