@@ -2,7 +2,11 @@
 
 Tries Cerebras first for fastest inference. Falls back to OpenAI, then Ollama.
 All three use the OpenAI-compatible SDK — just different base URLs.
+Maintains conversation history for natural multi-turn dialogue.
 """
+
+import threading
+from collections import deque
 
 from openai import OpenAI
 
@@ -14,6 +18,10 @@ _cerebras_client = None
 _openai_client = None
 _cerebras_available = False
 _openai_available = False
+
+# Conversation history — rolling buffer of recent messages for context
+_history = deque(maxlen=20)  # 10 exchanges (user + assistant)
+_history_lock = threading.Lock()
 
 # TARS system prompt — short, blunt, movie-accurate
 _SYSTEM_PROMPT = (
@@ -58,50 +66,60 @@ def is_available():
 
 
 def get_response(user_input, honesty=0.5, humor=0.5, target_language="english"):
-    """Get a TARS-style AI response. Tries Cerebras > OpenAI > Ollama."""
+    """Get a TARS-style AI response. Tries Cerebras > OpenAI > Ollama.
+
+    Maintains conversation history for natural multi-turn dialogue.
+    """
+    response = None
+
     # Try Cerebras first (fastest)
     if _cerebras_available:
         response = _try_cloud(
             _cerebras_client, config.CEREBRAS_MODEL,
             user_input, honesty, humor, target_language,
         )
-        if response:
-            return response
 
     # Fall back to OpenAI
-    if _openai_available:
+    if response is None and _openai_available:
         response = _try_cloud(
             _openai_client, config.AI_MODEL,
             user_input, honesty, humor, target_language,
         )
-        if response:
-            return response
 
     # Fall back to local LLM
-    if local_llm.is_available():
+    if response is None and local_llm.is_available():
         response = local_llm.get_response(user_input, honesty, humor, target_language)
-        if response:
-            return response
 
-    if not _cerebras_available and not _openai_available and not local_llm.is_available():
-        return "My AI brain is offline. Set CEREBRAS_API_KEY or OPENAI_API_KEY in .env, or install Ollama."
+    if response is None:
+        if not _cerebras_available and not _openai_available and not local_llm.is_available():
+            return "My AI brain is offline. Set CEREBRAS_API_KEY or OPENAI_API_KEY in .env, or install Ollama."
+        return "My circuits are fried. Try again in a moment."
 
-    return "My circuits are fried. Try again in a moment."
+    # Store in conversation history
+    with _history_lock:
+        _history.append({"role": "user", "content": user_input})
+        _history.append({"role": "assistant", "content": response})
+
+    return response
 
 
 def _try_cloud(client, model, user_input, honesty, humor, target_language):
     """Attempt to get a response from a cloud AI provider."""
-    messages = [
-        {
-            "role": "system",
-            "content": _SYSTEM_PROMPT.format(
-                honesty=honesty * 100,
-                humor=humor * 100,
-                language=target_language,
-            ),
-        },
-        {"role": "user", "content": user_input},
-    ]
+    system_msg = {
+        "role": "system",
+        "content": _SYSTEM_PROMPT.format(
+            honesty=honesty * 100,
+            humor=humor * 100,
+            language=target_language,
+        ),
+    }
+
+    # Build messages: system + conversation history + new user message
+    messages = [system_msg]
+    with _history_lock:
+        messages.extend(list(_history))
+    messages.append({"role": "user", "content": user_input})
+
     try:
         response = client.chat.completions.create(
             model=model,

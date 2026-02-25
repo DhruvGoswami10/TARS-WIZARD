@@ -157,9 +157,12 @@ def count_people(frame=None):
 
 
 def describe_scene():
-    """Get a detailed scene description using GPT-4o-mini vision.
+    """Get a scene description using available AI.
 
-    Captures a frame and sends it to OpenAI's vision API.
+    Strategy:
+        1. If OpenAI key available → send image to GPT-4o vision API
+        2. If YOLO available → detect objects, send list to Cerebras for witty description
+        3. Fallback → raw YOLO detection text
 
     Returns:
         str: Scene description, or error message.
@@ -168,53 +171,61 @@ def describe_scene():
     if image_bytes is None:
         return "I can't see anything — camera is not available."
 
-    # Check if OpenAI is available for vision
-    try:
-        from openai import OpenAI
+    # Strategy 1: OpenAI vision API (best quality, needs OpenAI key)
+    if config.OPENAI_API_KEY:
+        try:
+            from openai import OpenAI
 
-        if not config.OPENAI_API_KEY:
-            return _describe_with_yolo_only()
+            client = OpenAI(api_key=config.OPENAI_API_KEY)
+            b64_image = base64.b64encode(image_bytes).decode("utf-8")
 
-        client = OpenAI(api_key=config.OPENAI_API_KEY)
-        b64_image = base64.b64encode(image_bytes).decode("utf-8")
-
-        response = client.chat.completions.create(
-            model=config.AI_MODEL,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": (
-                                "You are TARS from Interstellar. Describe what you see "
-                                "in this image in 1-2 sentences with your signature sarcasm. "
-                                "Be specific about objects and people you notice."
-                            ),
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{b64_image}",
+            response = client.chat.completions.create(
+                model=config.AI_MODEL,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": (
+                                    "You are TARS from Interstellar. Describe what you see "
+                                    "in this image in 1-2 sentences with your signature sarcasm. "
+                                    "Be specific about objects and people you notice."
+                                ),
                             },
-                        },
-                    ],
-                }
-            ],
-            max_tokens=150,
-            timeout=15,
-        )
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        print(f"Vision API error: {e}")
-        return _describe_with_yolo_only()
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{b64_image}",
+                                },
+                            },
+                        ],
+                    }
+                ],
+                max_tokens=150,
+                timeout=15,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"Vision API error: {e}")
+
+    # Strategy 2: YOLO detect + Cerebras describe (works without OpenAI key)
+    return _describe_with_yolo_and_ai()
 
 
-def _describe_with_yolo_only():
-    """Fallback: describe scene using only YOLO detections."""
+def _describe_with_yolo_and_ai():
+    """Describe scene using YOLO detections + Cerebras AI for witty response."""
     detections = detect_objects()
     if not detections:
-        return "I can see... absolutely nothing interesting. My camera works but my brain doesn't, apparently."
+        # No YOLO or no detections — try AI with just "you see nothing"
+        try:
+            from tars.ai import chat
+            return chat.get_response(
+                "You looked around with your camera but couldn't detect anything. "
+                "Comment on what you see (nothing).",
+            )
+        except Exception:
+            return "I can see... absolutely nothing. My camera works but there's nothing worth looking at."
 
     # Count objects by label
     counts = {}
@@ -230,7 +241,16 @@ def _describe_with_yolo_only():
             parts.append(f"{count} {label}s")
 
     items = ", ".join(parts)
-    return f"I can see {items}. Not the most exciting view, but it's what you've got."
+
+    # Send detection list to Cerebras for a TARS-style description
+    try:
+        from tars.ai import chat
+        return chat.get_response(
+            f"You looked around with your camera and detected: {items}. "
+            "Describe what you see in your sarcastic TARS style.",
+        )
+    except Exception:
+        return f"I can see {items}. Not the most exciting view, but it's what you've got."
 
 
 def cleanup():

@@ -44,7 +44,10 @@ def _get_recognizer():
     if _recognizer is None:
         _recognizer = sr.Recognizer()
         _recognizer.dynamic_energy_threshold = True
-        _recognizer.pause_threshold = 2.0 if VAD_AVAILABLE else 1.5
+        # Lower pause threshold = faster response (detects end-of-speech sooner)
+        _recognizer.pause_threshold = 0.8
+        # How long non-speaking audio must be before a phrase is considered started
+        _recognizer.non_speaking_duration = 0.4
     return _recognizer
 
 
@@ -77,15 +80,15 @@ def listen(phrase_time_limit=None):
         mic_index = _find_mic_index()
         # Suppress JACK/ALSA errors that PortAudio prints to stderr
         with _suppress_stderr(), sr.Microphone(device_index=mic_index) as source:
-            # Only calibrate once — not every listen cycle
+            # Calibrate once with longer duration for better noise baseline
             if not _calibrated:
-                recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                recognizer.adjust_for_ambient_noise(source, duration=1.0)
                 _calibrated = True
 
             audio = recognizer.listen(
                 source,
                 timeout=config.LISTEN_TIMEOUT,
-                phrase_time_limit=phrase_time_limit,
+                phrase_time_limit=phrase_time_limit or 15,
             )
             command = recognizer.recognize_google(audio)
             return command.lower()
