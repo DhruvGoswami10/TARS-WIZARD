@@ -38,6 +38,7 @@ def env(key, default=None):
 # ─── Convenience accessors ──────────────────────────────────
 
 # API Keys
+CEREBRAS_API_KEY = env("CEREBRAS_API_KEY", "")
 OPENAI_API_KEY = env("OPENAI_API_KEY", "")
 WEATHER_API_KEY = env("WEATHER_API_KEY", "")
 CITY_NAME = env("CITY_NAME", "")
@@ -72,8 +73,9 @@ VOLUME_REDUCTION = get("voice.volume_reduction", 3)
 VOLUME_BOOST = get("voice.volume_boost", 8)
 
 # AI
+CEREBRAS_MODEL = get("ai.cerebras_model", "llama3.1-8b")
 AI_MODEL = get("ai.model", "gpt-4o-mini")
-AI_MAX_TOKENS = get("ai.max_tokens", 50)
+AI_MAX_TOKENS = get("ai.max_tokens", 30)
 AI_TEMPERATURE = get("ai.temperature", 0.9)
 
 # Personality
