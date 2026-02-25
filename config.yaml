@@ -49,6 +49,17 @@ voice:
   volume_reduction: 3         # dB
   volume_boost: 8             # dB
 
+# ─── Wake Word ─────────────────────────────────────────────
+wake_word:
+  threshold: 0.5              # Detection confidence (0.0-1.0)
+
+# ─── Local LLM (Ollama) ───────────────────────────────────
+# Offline fallback when internet is unavailable.
+# Install Ollama: https://ollama.ai  then run: ollama pull phi3
+local_llm:
+  base_url: "http://localhost:11434"
+  model: phi3                 # Small model that runs on Pi 5 (8GB RAM)
+
 # ─── Language Support ───────────────────────────────────────
 # voice_id values are edge-tts voice names (run `edge-tts --list-voices` to see all)
 # en-US-GuyNeural is a deep male voice — combined with the effects above, sounds like TARS
