@@ -65,6 +65,12 @@ SETTLE_DELAY = get("movement.settle_delay", 0.4)
 
 # Voice
 LISTEN_TIMEOUT = get("voice.listen_timeout", 3)
+VOICE_PHRASE_TIME_LIMIT = get("voice.phrase_time_limit", 6)
+VOICE_PAUSE_THRESHOLD = get("voice.pause_threshold", 0.6)
+VOICE_NON_SPEAKING_DURATION = get("voice.non_speaking_duration", 0.3)
+VOICE_OPERATION_TIMEOUT = get("voice.operation_timeout", 4)
+VOICE_SKIP_WHILE_SPEAKING = get("voice.skip_while_speaking", True)
+VOICE_POST_SPEECH_GUARD = get("voice.post_speech_guard", 0.2)
 SPEECH_RATE = get("voice.speech_rate", "-10%")
 SPEECH_PITCH = get("voice.speech_pitch", "-20Hz")
 PLAYBACK_SPEED = get("voice.playback_speed", 1.2)
@@ -87,6 +93,17 @@ DEFAULT_LANGUAGE = get("personality.default_language", "english")
 # Weather
 WEATHER_API_URL = get("weather.api_url", "https://api.openweathermap.org/data/2.5/weather")
 WEATHER_UNITS = get("weather.units", "metric")
+
+# Wake word
+WAKE_WORD_THRESHOLD = get("wake_word.threshold", 0.5)
+
+# Camera
+CAMERA_RESOLUTION = get("camera.resolution", [640, 480])
+CAMERA_YOLO_MODEL = get("camera.yolo_model", "yolov8n.pt")
+CAMERA_YOLO_CONFIDENCE = get("camera.yolo_confidence", 0.5)
+CAMERA_DESCRIBE_MAX_OBJECTS = get("camera.describe_max_objects", 5)
+CAMERA_VISION_TIMEOUT = get("camera.vision_timeout", 8)
+CAMERA_VISION_MAX_TOKENS = get("camera.vision_max_tokens", 80)
 
 # Languages — build lookup dicts from config
 _languages = get("languages", {})

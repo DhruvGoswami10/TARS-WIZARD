@@ -32,6 +32,7 @@ except Exception:
     pass  # Not on Linux or no ALSA — that's fine
 
 from tars.ai import chat
+from tars import config
 from tars.commands.language import LanguageState
 from tars.commands.movement import neutral
 from tars.commands.router import process_command
@@ -78,7 +79,7 @@ def first_run_check():
 
 def voice_pipeline_thread(state, voice_sm, use_wake_word=False):
     """Full voice pipeline: wake word → listen → think → speak → repeat."""
-    wake_detector = WakeWordDetector() if use_wake_word else None
+    wake_detector = WakeWordDetector(threshold=config.WAKE_WORD_THRESHOLD) if use_wake_word else None
     wake_prompt_shown = False
     terminal.print_system("Voice pipeline active — listening for speech...")
 
@@ -97,6 +98,10 @@ def voice_pipeline_thread(state, voice_sm, use_wake_word=False):
                 wake_prompt_shown = False  # Show again after next command
 
             # LISTENING: Record user speech
+            if config.VOICE_SKIP_WHILE_SPEAKING and speaker.is_speaking():
+                time.sleep(0.05)
+                continue
+
             voice_sm.transition(VoiceState.LISTENING)
             command = listener.listen()
 
@@ -117,6 +122,13 @@ def voice_pipeline_thread(state, voice_sm, use_wake_word=False):
             if result == "stop":
                 request_shutdown()
                 return
+
+            # Half-duplex mode for cleaner voice input and fewer self-triggers.
+            if config.VOICE_SKIP_WHILE_SPEAKING:
+                while speaker.is_speaking() and not is_shutting_down():
+                    time.sleep(0.05)
+                if config.VOICE_POST_SPEECH_GUARD > 0:
+                    time.sleep(config.VOICE_POST_SPEECH_GUARD)
 
         except Exception as e:
             terminal.print_error(f"Voice pipeline error: {e}")
