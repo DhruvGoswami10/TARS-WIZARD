@@ -1,7 +1,7 @@
 import time
 
 from tars.ai import chat
-from tars.commands import info, language, movement
+from tars.commands import info, language, movement, settings
 from tars.hardware import camera
 from tars.ui import terminal
 from tars.voice import speaker
@@ -90,6 +90,15 @@ def process_command(command, state):
 
     elif "weather" in cmd:
         response = info.get_weather()
+        _respond(response, state.current_language)
+
+    # Settings commands
+    elif "set humor" in cmd or "humor to" in cmd:
+        response = settings.set_humor(cmd, state)
+        _respond(response, state.current_language)
+
+    elif "set honesty" in cmd or "honesty to" in cmd:
+        response = settings.set_honesty(cmd, state)
         _respond(response, state.current_language)
 
     # Camera / vision commands

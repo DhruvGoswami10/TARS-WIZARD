@@ -80,6 +80,32 @@ def check_edge_tts():
         return False, "edge-tts not installed"
 
 
+def check_local_llm():
+    """Check if Ollama local LLM is available."""
+    try:
+        from tars.ai import local_llm
+        if local_llm.is_available():
+            return True, "Ollama ready (offline fallback)"
+        return False, "Not running (optional)"
+    except Exception:
+        return False, "Not running (optional)"
+
+
+def check_i2c():
+    """Check I2C devices."""
+    try:
+        from tars.hardware import i2c_scanner
+        if not i2c_scanner.is_available():
+            return False, "smbus2 not installed (Pi only)"
+        devices = i2c_scanner.scan()
+        if devices:
+            names = [f"{addr} ({name})" for addr, name in devices]
+            return True, ", ".join(names)
+        return False, "No devices found"
+    except Exception:
+        return False, "Not available (Pi only)"
+
+
 def check_camera():
     """Check if Pi Camera is available."""
     try:
@@ -97,10 +123,12 @@ def get_all_status():
     """Run all checks and return results."""
     return {
         "OpenAI API": check_openai(),
+        "Local LLM": check_local_llm(),
         "Voice (edge-tts)": check_edge_tts(),
         "Microphone": check_microphone(),
         "Camera": check_camera(),
         "Weather API": check_weather(),
         "Servo Controller": check_servos(),
+        "I2C Devices": check_i2c(),
         "Game Controller": check_controller(),
     }
