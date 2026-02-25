@@ -14,7 +14,6 @@ import threading
 
 import edge_tts
 from pydub import AudioSegment, effects
-from pydub.playback import play
 
 from tars import config
 from tars.commands.language import get_voice_id
@@ -23,7 +22,8 @@ _initialized = False
 
 # Interrupt support — allows stopping playback mid-sentence
 _playback_thread = None
-_playback_stop = threading.Event()
+_playback_obj = None  # simpleaudio PlayObject (has .stop())
+_playback_lock = threading.Lock()
 _speaking = threading.Event()
 
 
@@ -85,24 +85,37 @@ def modify_voice(audio_stream):
     return sound
 
 
-def _play_interruptible(sound):
-    """Play audio in chunks so it can be interrupted."""
-    _speaking.set()
-    _playback_stop.clear()
-
-    chunk_ms = 200  # Check for interrupts every 200ms
-    total_ms = len(sound)
+def _play_with_simpleaudio(sound):
+    """Play audio using simpleaudio (supports .stop() for interruption)."""
+    global _playback_obj
 
     try:
-        pos = 0
-        while pos < total_ms:
-            if _playback_stop.is_set():
-                break
-            end = min(pos + chunk_ms, total_ms)
-            chunk = sound[pos:end]
-            play(chunk)
-            pos = end
+        import simpleaudio as sa
+    except ImportError:
+        # Fall back to pydub's play (no interrupt support)
+        from pydub.playback import play
+        _speaking.set()
+        try:
+            play(sound)
+        finally:
+            _speaking.clear()
+        return
+
+    # Convert pydub AudioSegment to raw audio for simpleaudio
+    raw_data = sound.raw_data
+    sample_width = sound.sample_width
+    channels = sound.channels
+    frame_rate = sound.frame_rate
+
+    _speaking.set()
+    try:
+        play_obj = sa.play_buffer(raw_data, channels, sample_width, frame_rate)
+        with _playback_lock:
+            _playback_obj = play_obj
+        play_obj.wait_done()
     finally:
+        with _playback_lock:
+            _playback_obj = None
         _speaking.clear()
 
 
@@ -112,17 +125,23 @@ def play_audio(sound, interruptible=True):
 
     if interruptible:
         _playback_thread = threading.Thread(
-            target=_play_interruptible, args=(sound,), daemon=True
+            target=_play_with_simpleaudio, args=(sound,), daemon=True
         )
         _playback_thread.start()
         _playback_thread.join()
     else:
+        from pydub.playback import play
         play(sound)
 
 
 def stop_speaking():
-    """Interrupt current playback."""
-    _playback_stop.set()
+    """Interrupt current playback immediately."""
+    with _playback_lock:
+        if _playback_obj is not None:
+            try:
+                _playback_obj.stop()
+            except Exception:
+                pass
     if _playback_thread and _playback_thread.is_alive():
         _playback_thread.join(timeout=1.0)
 
