@@ -3,12 +3,13 @@
 Features:
     - Free TTS via edge-tts (no API key needed)
     - Robotic voice processing (band-pass filter, speedup)
-    - Interruptible playback (can stop mid-sentence)
+    - Interruptible playback via subprocess (works with Bluetooth audio)
 """
 
 import asyncio
 import io
 import os
+import subprocess
 import tempfile
 import threading
 
@@ -21,8 +22,7 @@ from tars.commands.language import get_voice_id
 _initialized = False
 
 # Interrupt support — allows stopping playback mid-sentence
-_playback_thread = None
-_playback_obj = None  # simpleaudio PlayObject (has .stop())
+_playback_process = None
 _playback_lock = threading.Lock()
 _speaking = threading.Event()
 
@@ -85,65 +85,66 @@ def modify_voice(audio_stream):
     return sound
 
 
-def _play_with_simpleaudio(sound):
-    """Play audio using simpleaudio (supports .stop() for interruption)."""
-    global _playback_obj
-
-    try:
-        import simpleaudio as sa
-    except ImportError:
-        # Fall back to pydub's play (no interrupt support)
-        from pydub.playback import play
-        _speaking.set()
-        try:
-            play(sound)
-        finally:
-            _speaking.clear()
-        return
-
-    # Convert pydub AudioSegment to raw audio for simpleaudio
-    raw_data = sound.raw_data
-    sample_width = sound.sample_width
-    channels = sound.channels
-    frame_rate = sound.frame_rate
-
+def _play_audio_subprocess(sound):
+    """Play audio via subprocess — works with Bluetooth, HDMI, USB audio."""
+    global _playback_process
+    tmp_path = None
     _speaking.set()
     try:
-        play_obj = sa.play_buffer(raw_data, channels, sample_width, frame_rate)
+        # Export pydub audio to a temp WAV file
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            tmp_path = tmp.name
+        sound.export(tmp_path, format="wav")
+
+        # Try aplay first (ALSA — works on all Pi audio outputs including BT)
         with _playback_lock:
-            _playback_obj = play_obj
-        play_obj.wait_done()
+            _playback_process = subprocess.Popen(
+                ["aplay", "-q", tmp_path],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        _playback_process.wait()
+    except FileNotFoundError:
+        # aplay not found — try ffplay as fallback
+        try:
+            with _playback_lock:
+                _playback_process = subprocess.Popen(
+                    ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", tmp_path],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            _playback_process.wait()
+        except FileNotFoundError:
+            print("No audio player found. Install alsa-utils or ffmpeg.")
+    except Exception as e:
+        print(f"Playback error: {e}")
     finally:
         with _playback_lock:
-            _playback_obj = None
+            _playback_process = None
         _speaking.clear()
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 def play_audio(sound, interruptible=True):
     """Play an audio segment, optionally in an interruptible thread."""
-    global _playback_thread
-
     if interruptible:
-        _playback_thread = threading.Thread(
-            target=_play_with_simpleaudio, args=(sound,), daemon=True
-        )
-        _playback_thread.start()
-        _playback_thread.join()
+        t = threading.Thread(target=_play_audio_subprocess, args=(sound,), daemon=True)
+        t.start()
+        t.join()
     else:
-        from pydub.playback import play
-        play(sound)
+        _play_audio_subprocess(sound)
 
 
 def stop_speaking():
     """Interrupt current playback immediately."""
     with _playback_lock:
-        if _playback_obj is not None:
+        if _playback_process is not None:
             try:
-                _playback_obj.stop()
+                _playback_process.terminate()
             except Exception:
                 pass
-    if _playback_thread and _playback_thread.is_alive():
-        _playback_thread.join(timeout=1.0)
+    _speaking.clear()
 
 
 def speak(text, language="english", interruptible=True):
