@@ -57,13 +57,30 @@ async def _generate_speech_async(text, voice_id):
     return tmp_path
 
 
+def _run_async(coro):
+    """Run an async coroutine efficiently.
+
+    Reuses event loop when possible, avoids asyncio.run() overhead.
+    """
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # Already in an async context — can't use run()
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                return pool.submit(asyncio.run, coro).result()
+        return loop.run_until_complete(coro)
+    except RuntimeError:
+        return asyncio.run(coro)
+
+
 def generate_speech(text, language="english"):
     """Generate speech audio from text using edge-tts."""
     if not _initialized:
         return None
     voice_id = get_voice_id(language)
     try:
-        tmp_path = asyncio.run(_generate_speech_async(text, voice_id))
+        tmp_path = _run_async(_generate_speech_async(text, voice_id))
         with open(tmp_path, "rb") as f:
             audio_data = f.read()
         os.unlink(tmp_path)

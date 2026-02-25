@@ -14,9 +14,20 @@ import sys
 import threading
 import time
 
-# Suppress ALSA/JACK error spam before any audio library imports
+# Suppress ALL audio error spam before any audio library imports
+# JACK env vars tell libjack not to auto-start the server
 os.environ["JACK_NO_START_SERVER"] = "1"
 os.environ["JACK_NO_AUDIO_RESERVATION"] = "1"
+# Redirect stderr during audio library import to suppress JACK init messages
+_devnull_fd = None
+_old_stderr_fd = None
+try:
+    _devnull_fd = os.open(os.devnull, os.O_WRONLY)
+    _old_stderr_fd = os.dup(2)
+    os.dup2(_devnull_fd, 2)
+except OSError:
+    pass
+# Suppress ALSA errors via ctypes handler
 try:
     import ctypes
 
@@ -31,17 +42,27 @@ try:
 except Exception:
     pass  # Not on Linux or no ALSA — that's fine
 
-from tars.ai import chat
-from tars.commands.language import LanguageState
-from tars.commands.movement import neutral
-from tars.commands.router import process_command
-from tars.hardware import camera, servos
-from tars.ui import terminal
-from tars.utils.logging import setup as setup_logging
-from tars.utils.threading import SharedState, is_shutting_down, request_shutdown, shutdown_event
-from tars.voice import listener, speaker
-from tars.voice.voice_state import VoiceState, VoiceStateMachine
-from tars.voice.wake_word import WakeWordDetector
+from tars.ai import chat  # noqa: E402
+from tars.commands.language import LanguageState  # noqa: E402
+from tars.commands.movement import neutral  # noqa: E402
+from tars.commands.router import process_command  # noqa: E402
+from tars.hardware import camera, servos  # noqa: E402
+from tars.ui import terminal  # noqa: E402
+from tars.utils.logging import setup as setup_logging  # noqa: E402
+from tars.utils.threading import SharedState, is_shutting_down, request_shutdown, shutdown_event  # noqa: E402
+from tars.voice import listener, speaker  # noqa: E402
+from tars.voice.voice_state import VoiceState, VoiceStateMachine  # noqa: E402
+from tars.voice.wake_word import WakeWordDetector  # noqa: E402
+
+# Restore stderr now that audio libraries are loaded
+try:
+    if _old_stderr_fd is not None:
+        os.dup2(_old_stderr_fd, 2)
+        os.close(_old_stderr_fd)
+    if _devnull_fd is not None:
+        os.close(_devnull_fd)
+except OSError:
+    pass
 
 
 def first_run_check():

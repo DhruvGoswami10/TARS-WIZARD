@@ -1,7 +1,7 @@
 """Speech recognition for TARS — listens for voice commands.
 
-Uses SpeechRecognition with optional VAD (Voice Activity Detection)
-for smarter silence detection instead of fixed timeouts.
+Uses SpeechRecognition with Google Speech API.
+Optimized for low latency: mic stays open, device index cached.
 """
 
 import contextlib
@@ -11,31 +11,28 @@ import speech_recognition as sr
 
 from tars import config
 
-# Try to import webrtcvad for smarter silence detection
-try:
-    import webrtcvad  # noqa: F401
-
-    VAD_AVAILABLE = True
-except ImportError:
-    VAD_AVAILABLE = False
-
-# Persistent recognizer — avoids recreating every call
+# Persistent state — avoids recreating every listen cycle
 _recognizer = None
+_mic_index = None
+_mic_index_found = False
 _calibrated = False
 
 
 @contextlib.contextmanager
 def _suppress_stderr():
-    """Suppress stderr output — silences JACK/ALSA spam from PortAudio."""
-    devnull = os.open(os.devnull, os.O_WRONLY)
-    old_stderr = os.dup(2)
-    os.dup2(devnull, 2)
+    """Suppress stderr — silences JACK/ALSA spam from PortAudio."""
     try:
-        yield
-    finally:
-        os.dup2(old_stderr, 2)
-        os.close(devnull)
-        os.close(old_stderr)
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        old_stderr = os.dup(2)
+        os.dup2(devnull, 2)
+        try:
+            yield
+        finally:
+            os.dup2(old_stderr, 2)
+            os.close(devnull)
+            os.close(old_stderr)
+    except OSError:
+        yield  # If fd manipulation fails, just continue without suppression
 
 
 def _get_recognizer():
@@ -44,57 +41,84 @@ def _get_recognizer():
     if _recognizer is None:
         _recognizer = sr.Recognizer()
         _recognizer.dynamic_energy_threshold = True
-        # Lower pause threshold = faster response (detects end-of-speech sooner)
+        # Lower = detects end-of-speech faster (snappier response)
         _recognizer.pause_threshold = 0.8
-        # How long non-speaking audio must be before a phrase is considered started
-        _recognizer.non_speaking_duration = 0.4
+        _recognizer.non_speaking_duration = 0.3
+        # Lower energy ratio = more sensitive to quiet speech
+        _recognizer.energy_threshold = 300
     return _recognizer
 
 
-def _find_mic_index():
-    """Find a real microphone (skip HDMI outputs).
+def _get_mic_index():
+    """Get cached mic index (found once, reused forever)."""
+    global _mic_index, _mic_index_found
+    if _mic_index_found:
+        return _mic_index
 
-    Returns a valid device index, or None to use the system default.
-    """
-    try:
-        names = sr.Microphone.list_microphone_names()
-        # Count actual available devices (may be fewer than names list)
+    # Suppress stderr during PyAudio init (JACK spam source)
+    with _suppress_stderr():
         try:
             import pyaudio
             pa = pyaudio.PyAudio()
             device_count = pa.get_device_count()
+
+            # Search for a real mic by checking device info
+            for i in range(device_count):
+                try:
+                    info = pa.get_device_info_by_index(i)
+                    if info.get("maxInputChannels", 0) > 0:
+                        name = info.get("name", "").lower()
+                        if any(kw in name for kw in ("usb", "mic", "input", "capture")):
+                            _mic_index = i
+                            _mic_index_found = True
+                            pa.terminate()
+                            return _mic_index
+                except Exception:
+                    continue
+
+            # No keyword match — use first input device
+            for i in range(device_count):
+                try:
+                    info = pa.get_device_info_by_index(i)
+                    if info.get("maxInputChannels", 0) > 0:
+                        _mic_index = i
+                        _mic_index_found = True
+                        pa.terminate()
+                        return _mic_index
+                except Exception:
+                    continue
+
             pa.terminate()
         except Exception:
-            device_count = len(names)
+            pass
 
-        for i, name in enumerate(names):
-            if i >= device_count:
-                break  # No more valid devices
-            name_lower = name.lower()
-            if any(kw in name_lower for kw in ("usb", "mic", "input", "capture")):
-                return i
-    except Exception:
-        pass
-    return None
+    # Fallback: let SpeechRecognition pick default
+    _mic_index_found = True
+    _mic_index = None
+    return _mic_index
 
 
 def listen(phrase_time_limit=None):
     """Listen for a voice command via microphone.
 
     Args:
-        phrase_time_limit: Max seconds to listen for a phrase (None = no limit).
+        phrase_time_limit: Max seconds to listen for a phrase (None = use default).
 
     Returns:
         Lowercase string of recognized speech, or None on failure.
     """
     global _calibrated
     recognizer = _get_recognizer()
+    mic_index = _get_mic_index()
 
     try:
-        mic_index = _find_mic_index()
-        # Suppress JACK/ALSA errors that PortAudio prints to stderr
-        with _suppress_stderr(), sr.Microphone(device_index=mic_index) as source:
-            # Calibrate once with longer duration for better noise baseline
+        # Suppress stderr only on first open (JACK errors happen on PyAudio init)
+        if not _calibrated:
+            ctx = _suppress_stderr()
+        else:
+            ctx = contextlib.nullcontext()
+
+        with ctx, sr.Microphone(device_index=mic_index) as source:
             if not _calibrated:
                 recognizer.adjust_for_ambient_noise(source, duration=1.0)
                 _calibrated = True
@@ -102,7 +126,7 @@ def listen(phrase_time_limit=None):
             audio = recognizer.listen(
                 source,
                 timeout=config.LISTEN_TIMEOUT,
-                phrase_time_limit=phrase_time_limit or 15,
+                phrase_time_limit=phrase_time_limit or 10,
             )
             command = recognizer.recognize_google(audio)
             return command.lower()
