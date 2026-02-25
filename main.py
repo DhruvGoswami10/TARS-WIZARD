@@ -9,11 +9,14 @@ Usage:
 """
 
 import argparse
+import os
 import sys
 import threading
 import time
 
 # Suppress ALSA/JACK error spam before any audio library imports
+os.environ["JACK_NO_START_SERVER"] = "1"
+os.environ["JACK_NO_AUDIO_RESERVATION"] = "1"
 try:
     import ctypes
 
@@ -77,6 +80,7 @@ def voice_pipeline_thread(state, voice_sm, use_wake_word=False):
     """Full voice pipeline: wake word → listen → think → speak → repeat."""
     wake_detector = WakeWordDetector() if use_wake_word else None
     wake_prompt_shown = False
+    terminal.print_system("Voice pipeline active — listening for speech...")
 
     while not is_shutting_down():
         try:
