@@ -4,6 +4,9 @@ Uses SpeechRecognition with optional VAD (Voice Activity Detection)
 for smarter silence detection instead of fixed timeouts.
 """
 
+import contextlib
+import os
+
 import speech_recognition as sr
 
 from tars import config
@@ -19,6 +22,20 @@ except ImportError:
 # Persistent recognizer — avoids recreating every call
 _recognizer = None
 _calibrated = False
+
+
+@contextlib.contextmanager
+def _suppress_stderr():
+    """Suppress stderr output — silences JACK/ALSA spam from PortAudio."""
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    old_stderr = os.dup(2)
+    os.dup2(devnull, 2)
+    try:
+        yield
+    finally:
+        os.dup2(old_stderr, 2)
+        os.close(devnull)
+        os.close(old_stderr)
 
 
 def _get_recognizer():
@@ -58,7 +75,8 @@ def listen(phrase_time_limit=None):
 
     try:
         mic_index = _find_mic_index()
-        with sr.Microphone(device_index=mic_index) as source:
+        # Suppress JACK/ALSA errors that PortAudio prints to stderr
+        with _suppress_stderr(), sr.Microphone(device_index=mic_index) as source:
             # Only calibrate once — not every listen cycle
             if not _calibrated:
                 recognizer.adjust_for_ambient_noise(source, duration=0.5)

@@ -103,6 +103,11 @@ def voice_pipeline_thread(state, voice_sm, use_wake_word=False):
             if not command or is_shutting_down():
                 continue
 
+            # Stop any ongoing speech — user is interrupting
+            if speaker.is_speaking():
+                speaker.stop_speaking()
+                terminal.print_system("[Interrupted]")
+
             terminal.print_user(command)
 
             # THINKING: Process command

@@ -85,37 +85,60 @@ def modify_voice(audio_stream):
     return sound
 
 
+def _find_audio_player():
+    """Find the best audio player — prefers PipeWire/PulseAudio for BT support."""
+    # pw-play and paplay route through PipeWire/PulseAudio,
+    # so they see Bluetooth speakers as the default sink.
+    # aplay is ALSA-only and can't reach BT devices.
+    players = [
+        (["pw-play"], "PipeWire"),
+        (["paplay"], "PulseAudio"),
+        (["aplay", "-q"], "ALSA"),
+        (["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet"], "FFmpeg"),
+    ]
+    for cmd, name in players:
+        try:
+            subprocess.run(
+                [cmd[0], "--help"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return cmd, name
+        except FileNotFoundError:
+            continue
+    return None, None
+
+
+# Cache the player on first use
+_audio_player_cmd = None
+_audio_player_name = None
+
+
 def _play_audio_subprocess(sound):
     """Play audio via subprocess — works with Bluetooth, HDMI, USB audio."""
-    global _playback_process
+    global _playback_process, _audio_player_cmd, _audio_player_name
     tmp_path = None
     _speaking.set()
     try:
+        # Find player once
+        if _audio_player_cmd is None:
+            _audio_player_cmd, _audio_player_name = _find_audio_player()
+            if _audio_player_cmd is None:
+                print("No audio player found. Install pipewire or pulseaudio-utils.")
+                return
+
         # Export pydub audio to a temp WAV file
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
             tmp_path = tmp.name
         sound.export(tmp_path, format="wav")
 
-        # Try aplay first (ALSA — works on all Pi audio outputs including BT)
         with _playback_lock:
             _playback_process = subprocess.Popen(
-                ["aplay", "-q", tmp_path],
+                _audio_player_cmd + [tmp_path],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
         _playback_process.wait()
-    except FileNotFoundError:
-        # aplay not found — try ffplay as fallback
-        try:
-            with _playback_lock:
-                _playback_process = subprocess.Popen(
-                    ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", tmp_path],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-            _playback_process.wait()
-        except FileNotFoundError:
-            print("No audio player found. Install alsa-utils or ffmpeg.")
     except Exception as e:
         print(f"Playback error: {e}")
     finally:
@@ -126,14 +149,17 @@ def _play_audio_subprocess(sound):
             os.unlink(tmp_path)
 
 
-def play_audio(sound, interruptible=True):
-    """Play an audio segment, optionally in an interruptible thread."""
-    if interruptible:
-        t = threading.Thread(target=_play_audio_subprocess, args=(sound,), daemon=True)
-        t.start()
+def play_audio(sound, blocking=True):
+    """Play an audio segment.
+
+    Args:
+        blocking: If True, wait for playback to finish. If False, return
+                  immediately (playback continues in background thread).
+    """
+    t = threading.Thread(target=_play_audio_subprocess, args=(sound,), daemon=True)
+    t.start()
+    if blocking:
         t.join()
-    else:
-        _play_audio_subprocess(sound)
 
 
 def stop_speaking():
@@ -147,10 +173,16 @@ def stop_speaking():
     _speaking.clear()
 
 
-def speak(text, language="english", interruptible=True):
-    """Full pipeline: generate speech, apply effects, play audio."""
+def speak(text, language="english", blocking=True):
+    """Full pipeline: generate speech, apply effects, play audio.
+
+    Args:
+        blocking: If True (default), wait for playback to finish.
+                  If False, return immediately (voice pipeline uses this
+                  so it can listen for interruptions while TARS speaks).
+    """
     audio_stream = generate_speech(text, language)
     if audio_stream is None:
         return
     modified_sound = modify_voice(audio_stream)
-    play_audio(modified_sound, interruptible=interruptible)
+    play_audio(modified_sound, blocking=blocking)

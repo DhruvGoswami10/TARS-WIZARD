@@ -7,12 +7,17 @@ from tars.ui import terminal
 from tars.voice import speaker
 
 
-def _respond(text, lang, text_only=False):
-    """Print response to terminal and speak it (unless text-only mode)."""
+def _respond(text, lang, text_only=False, blocking=True):
+    """Print response to terminal and speak it (unless text-only mode).
+
+    Args:
+        blocking: If True, wait for speech to finish before returning.
+                  Voice pipeline passes False so TARS can be interrupted.
+    """
     terminal.print_tars(text)
     if not text_only:
         try:
-            speaker.speak(text, lang)
+            speaker.speak(text, lang, blocking=blocking)
         except Exception as e:
             terminal.print_error(f"Speech error: {e}")
 
