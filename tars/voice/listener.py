@@ -1,7 +1,7 @@
 """Speech recognition for TARS — listens for voice commands.
 
 Uses SpeechRecognition with Google Speech API.
-Optimized for low latency: mic stays open, device index cached.
+Optimized for low latency: device cached, stderr suppressed.
 """
 
 import contextlib
@@ -13,8 +13,6 @@ from tars import config
 
 # Persistent state — avoids recreating every listen cycle
 _recognizer = None
-_mic_index = None
-_mic_index_found = False
 _calibrated = False
 
 
@@ -32,7 +30,7 @@ def _suppress_stderr():
             os.close(devnull)
             os.close(old_stderr)
     except OSError:
-        yield  # If fd manipulation fails, just continue without suppression
+        yield
 
 
 def _get_recognizer():
@@ -41,84 +39,26 @@ def _get_recognizer():
     if _recognizer is None:
         _recognizer = sr.Recognizer()
         _recognizer.dynamic_energy_threshold = True
-        # Lower = detects end-of-speech faster (snappier response)
-        _recognizer.pause_threshold = 0.8
-        _recognizer.non_speaking_duration = 0.3
-        # Lower energy ratio = more sensitive to quiet speech
+        # pause_threshold: seconds of silence before phrase is considered done.
+        # Too low = cuts off mid-sentence. Too high = slow response.
+        _recognizer.pause_threshold = 1.2
+        _recognizer.non_speaking_duration = 0.5
         _recognizer.energy_threshold = 300
     return _recognizer
 
 
-def _get_mic_index():
-    """Get cached mic index (found once, reused forever)."""
-    global _mic_index, _mic_index_found
-    if _mic_index_found:
-        return _mic_index
-
-    # Suppress stderr during PyAudio init (JACK spam source)
-    with _suppress_stderr():
-        try:
-            import pyaudio
-            pa = pyaudio.PyAudio()
-            device_count = pa.get_device_count()
-
-            # Search for a real mic by checking device info
-            for i in range(device_count):
-                try:
-                    info = pa.get_device_info_by_index(i)
-                    if info.get("maxInputChannels", 0) > 0:
-                        name = info.get("name", "").lower()
-                        if any(kw in name for kw in ("usb", "mic", "input", "capture")):
-                            _mic_index = i
-                            _mic_index_found = True
-                            pa.terminate()
-                            return _mic_index
-                except Exception:
-                    continue
-
-            # No keyword match — use first input device
-            for i in range(device_count):
-                try:
-                    info = pa.get_device_info_by_index(i)
-                    if info.get("maxInputChannels", 0) > 0:
-                        _mic_index = i
-                        _mic_index_found = True
-                        pa.terminate()
-                        return _mic_index
-                except Exception:
-                    continue
-
-            pa.terminate()
-        except Exception:
-            pass
-
-    # Fallback: let SpeechRecognition pick default
-    _mic_index_found = True
-    _mic_index = None
-    return _mic_index
-
-
 def listen(phrase_time_limit=None):
     """Listen for a voice command via microphone.
-
-    Args:
-        phrase_time_limit: Max seconds to listen for a phrase (None = use default).
 
     Returns:
         Lowercase string of recognized speech, or None on failure.
     """
     global _calibrated
     recognizer = _get_recognizer()
-    mic_index = _get_mic_index()
 
     try:
-        # Suppress stderr only on first open (JACK errors happen on PyAudio init)
-        if not _calibrated:
-            ctx = _suppress_stderr()
-        else:
-            ctx = contextlib.nullcontext()
-
-        with ctx, sr.Microphone(device_index=mic_index) as source:
+        # Always suppress stderr — JACK errors come from Microphone() init
+        with _suppress_stderr(), sr.Microphone() as source:
             if not _calibrated:
                 recognizer.adjust_for_ambient_noise(source, duration=1.0)
                 _calibrated = True
