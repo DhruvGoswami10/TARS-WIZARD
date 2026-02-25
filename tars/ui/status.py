@@ -80,12 +80,26 @@ def check_edge_tts():
         return False, "edge-tts not installed"
 
 
+def check_camera():
+    """Check if Pi Camera is available."""
+    try:
+        from tars.hardware import camera
+
+        if camera.is_available():
+            yolo = " + YOLO" if camera.is_yolo_available() else ""
+            return True, f"Pi Camera ready{yolo}"
+        return False, "Not detected (Pi only)"
+    except Exception:
+        return False, "Not detected (Pi only)"
+
+
 def get_all_status():
     """Run all checks and return results."""
     return {
         "OpenAI API": check_openai(),
         "Voice (edge-tts)": check_edge_tts(),
         "Microphone": check_microphone(),
+        "Camera": check_camera(),
         "Weather API": check_weather(),
         "Servo Controller": check_servos(),
         "Game Controller": check_controller(),

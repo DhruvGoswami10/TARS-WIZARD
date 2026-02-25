@@ -17,7 +17,7 @@ from tars.ai import chat
 from tars.commands.language import LanguageState
 from tars.commands.movement import neutral
 from tars.commands.router import process_command
-from tars.hardware import servos
+from tars.hardware import camera, servos
 from tars.ui import terminal
 from tars.utils.logging import setup as setup_logging
 from tars.utils.threading import SharedState, is_shutting_down, request_shutdown, shutdown_event
@@ -214,6 +214,7 @@ def main():
     servos.initialize()
     speaker.initialize()
     chat.initialize()
+    camera.initialize()
 
     # Show system status
     terminal.print_status_panel()
@@ -264,6 +265,9 @@ def main():
 
         # Stop any ongoing speech
         speaker.stop_speaking()
+
+        # Clean up camera
+        camera.cleanup()
 
         # Return servos to neutral position
         try:
