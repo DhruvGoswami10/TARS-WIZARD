@@ -37,12 +37,15 @@ ruff>=0.4.0
 pytest>=8.0.0
 pytest-cov>=5.0.0
 
+# Image processing (needed for camera vision API)
+Pillow>=10.0.0
+
 # ─── Pi-Only Dependencies ───────────────────────────────────
 # These will fail on non-Pi systems. Install separately on Pi:
-#   pip install adafruit-circuitpython-pca9685 adafruit-blinka evdev picamera2
+#   pip install adafruit-circuitpython-pca9685 adafruit-blinka evdev picamera2 ultralytics
 #
 # adafruit-circuitpython-pca9685>=3.4.0
 # adafruit-blinka>=8.0.0
 # evdev>=1.6.0
 # picamera2>=0.3.0
-# ultralytics>=8.0.0
+# ultralytics>=8.0.0           # YOLOv8 for local object detection

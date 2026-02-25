@@ -2,6 +2,7 @@ import time
 
 from tars.ai import chat
 from tars.commands import info, language, movement
+from tars.hardware import camera
 from tars.voice import speaker
 
 
@@ -80,6 +81,53 @@ def process_command(command, state):
     elif "weather" in command:
         response = info.get_weather()
         speaker.speak(response, state.current_language)
+
+    # Camera / vision commands
+    elif any(phrase in command for phrase in ("what do you see", "look around", "describe")):
+        if not camera.is_available():
+            speaker.speak("My eyes are offline. No camera detected.", state.current_language)
+        else:
+            speaker.speak("Let me take a look...", state.current_language)
+            response = camera.describe_scene()
+            speaker.speak(response, state.current_language)
+
+    elif "how many people" in command:
+        if not camera.is_available():
+            speaker.speak("I can't see anyone — no camera.", state.current_language)
+        elif not camera.is_yolo_available():
+            speaker.speak("My detection system is offline. I need ultralytics installed.", state.current_language)
+        else:
+            count = camera.count_people()
+            if count == 0:
+                response = "I don't see anyone. Either I'm alone, or everyone's hiding."
+            elif count == 1:
+                response = "I see one person. Just you and me, I guess."
+            else:
+                response = f"I count {count} people. That's {count} more than I'd prefer."
+            speaker.speak(response, state.current_language)
+
+    elif "greet everyone" in command:
+        if not camera.is_available() or not camera.is_yolo_available():
+            speaker.speak("I can't see anyone to greet.", state.current_language)
+        else:
+            count = camera.count_people()
+            if count == 0:
+                response = "There's nobody here to greet. Awkward."
+            elif count == 1:
+                response = chat.get_response(
+                    "Greet one person you see standing in front of you",
+                    honesty=state.honesty,
+                    humor=state.humor,
+                    target_language=state.current_language,
+                )
+            else:
+                response = chat.get_response(
+                    f"Greet a group of {count} people standing in front of you",
+                    honesty=state.honesty,
+                    humor=state.humor,
+                    target_language=state.current_language,
+                )
+            speaker.speak(response, state.current_language)
 
     # Default — chat with AI
     else:

@@ -131,6 +131,14 @@ weather:
   api_url: "https://api.openweathermap.org/data/2.5/weather"
   units: metric
 
+# ─── Camera ────────────────────────────────────────────────
+# Pi Camera Module v2 via picamera2.
+# YOLO runs locally for object/person detection.
+camera:
+  resolution: [640, 480]       # Capture resolution (width, height)
+  yolo_model: yolov8n.pt       # Nano model — fast on Pi 5
+  yolo_confidence: 0.5         # Min detection confidence (0.0-1.0)
+
 # ─── Controller ─────────────────────────────────────────────
 # Auto-detected on startup. Override here if needed.
 controller:
