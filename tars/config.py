@@ -14,7 +14,7 @@ if _env_path.exists():
 
 # Load config.yaml
 _config_path = _PROJECT_ROOT / "config.yaml"
-with open(_config_path) as f:
+with open(_config_path, encoding="utf-8") as f:
     _config = yaml.safe_load(f)
 
 

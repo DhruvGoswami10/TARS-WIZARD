@@ -13,12 +13,12 @@ console = Console()
 def print_banner():
     """Print the TARS startup banner."""
     banner = Text()
-    banner.append("████████╗ █████╗ ██████╗ ███████╗\n", style="bold cyan")
-    banner.append("╚══██╔══╝██╔══██╗██╔══██╗██╔════╝\n", style="bold cyan")
-    banner.append("   ██║   ███████║██████╔╝███████╗\n", style="bold cyan")
-    banner.append("   ██║   ██╔══██║██╔══██╗╚════██║\n", style="bold cyan")
-    banner.append("   ██║   ██║  ██║██║  ██║███████║\n", style="bold cyan")
-    banner.append("   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝\n", style="bold cyan")
+    banner.append("████████╗ █████╗ ██████╗ ███████╗\n", style="bold #f8d566")
+    banner.append("╚══██╔══╝██╔══██╗██╔══██╗██╔════╝\n", style="bold #f8d566")
+    banner.append("   ██║   ███████║██████╔╝███████╗\n", style="bold #f8d566")
+    banner.append("   ██║   ██╔══██║██╔══██╗╚════██║\n", style="bold #f8d566")
+    banner.append("   ██║   ██║  ██║██║  ██║███████║\n", style="bold #f8d566")
+    banner.append("   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝\n", style="bold #f8d566")
     banner.append("  TARS-WIZARD v2.0", style="bold white")
     console.print(banner)
 
@@ -54,7 +54,7 @@ def print_settings(state):
 
 def print_help():
     """Print available commands."""
-    table = Table(show_header=True, header_style="bold cyan", box=None)
+    table = Table(show_header=True, header_style="bold #f8d566", box=None)
     table.add_column("Command", style="bold")
     table.add_column("Description")
 
@@ -79,7 +79,7 @@ def print_user(text):
 
 def print_tars(text):
     """Print TARS response."""
-    console.print(f"[bold cyan]TARS:[/bold cyan] {text}")
+    console.print(f"[bold #f8d566]TARS:[/bold #f8d566] {text}")
 
 
 def print_system(text):
@@ -95,6 +95,6 @@ def print_error(text):
 def get_input():
     """Get user input with TARS prompt."""
     try:
-        return console.input("[bold cyan]TARS>[/bold cyan] ").strip()
+        return console.input("[bold #f8d566]TARS>[/bold #f8d566] ").strip()
     except (EOFError, KeyboardInterrupt):
         return None
