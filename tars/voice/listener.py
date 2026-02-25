@@ -22,7 +22,6 @@ except ImportError:
 # Persistent recognizer — avoids recreating every call
 _recognizer = None
 _calibrated = False
-_mic_index = None
 
 
 @contextlib.contextmanager
@@ -45,30 +44,24 @@ def _get_recognizer():
     if _recognizer is None:
         _recognizer = sr.Recognizer()
         _recognizer.dynamic_energy_threshold = True
-        _recognizer.pause_threshold = config.VOICE_PAUSE_THRESHOLD
-        _recognizer.non_speaking_duration = config.VOICE_NON_SPEAKING_DURATION
-        _recognizer.operation_timeout = config.VOICE_OPERATION_TIMEOUT
+        # Lower pause threshold = faster response (detects end-of-speech sooner)
+        _recognizer.pause_threshold = 0.8
+        # How long non-speaking audio must be before a phrase is considered started
+        _recognizer.non_speaking_duration = 0.4
     return _recognizer
 
 
-def _find_mic_index(force_refresh=False):
+def _find_mic_index():
     """Find a real microphone (skip HDMI outputs)."""
-    global _mic_index
-    if _mic_index is not None and not force_refresh:
-        return _mic_index
-
     try:
         names = sr.Microphone.list_microphone_names()
         for i, name in enumerate(names):
             name_lower = name.lower()
             if any(kw in name_lower for kw in ("usb", "mic", "input", "capture")):
-                _mic_index = i
-                return _mic_index
+                return i
     except Exception:
         pass
-
-    _mic_index = None
-    return _mic_index
+    return None
 
 
 def listen(phrase_time_limit=None):
@@ -80,13 +73,11 @@ def listen(phrase_time_limit=None):
     Returns:
         Lowercase string of recognized speech, or None on failure.
     """
-    global _calibrated, _mic_index
+    global _calibrated
     recognizer = _get_recognizer()
 
     try:
         mic_index = _find_mic_index()
-        phrase_limit = phrase_time_limit or config.VOICE_PHRASE_TIME_LIMIT
-
         # Suppress JACK/ALSA errors that PortAudio prints to stderr
         with _suppress_stderr(), sr.Microphone(device_index=mic_index) as source:
             # Calibrate once with longer duration for better noise baseline
@@ -97,7 +88,7 @@ def listen(phrase_time_limit=None):
             audio = recognizer.listen(
                 source,
                 timeout=config.LISTEN_TIMEOUT,
-                phrase_time_limit=phrase_limit,
+                phrase_time_limit=phrase_time_limit or 15,
             )
             command = recognizer.recognize_google(audio)
             return command.lower()
@@ -109,6 +100,5 @@ def listen(phrase_time_limit=None):
         print("Speech service unavailable.")
         return None
     except OSError as e:
-        _mic_index = None  # force device re-discovery next listen call
         print(f"Microphone error: {e}")
         return None

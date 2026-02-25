@@ -37,13 +37,7 @@ movement:
 # ─── Voice Settings ─────────────────────────────────────────
 voice:
   # Speech-to-text
-  listen_timeout: 2          # seconds to wait for speech start
-  phrase_time_limit: 6       # max seconds per utterance (keeps commands snappy)
-  pause_threshold: 0.6       # lower = detect end-of-speech faster
-  non_speaking_duration: 0.3 # trailing silence needed to finalize a phrase
-  operation_timeout: 4       # max seconds waiting for cloud STT response
-  skip_while_speaking: true  # avoids self-trigger while TARS is talking
-  post_speech_guard: 0.2     # tiny cooldown after speech ends (echo protection)
+  listen_timeout: 3          # seconds to wait for speech
   # Text-to-speech (edge-tts — free, no API key needed)
   # Rate uses percent format: "+0%" is normal, "-15%" is slower
   # Pitch uses Hz format: "+0Hz" is normal, "-10Hz" is lower
@@ -148,9 +142,6 @@ camera:
   resolution: [640, 480]       # Capture resolution (width, height)
   yolo_model: yolov8n.pt       # Nano model — fast on Pi 5
   yolo_confidence: 0.5         # Min detection confidence (0.0-1.0)
-  describe_max_objects: 5      # Keep responses concise but precise
-  vision_timeout: 8            # Cloud vision timeout seconds
-  vision_max_tokens: 80        # Keep cloud responses short/fast
 
 # ─── Controller ─────────────────────────────────────────────
 # Auto-detected on startup. Override here if needed.

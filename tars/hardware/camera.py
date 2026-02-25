@@ -1,9 +1,9 @@
 """Camera integration for TARS — Pi Camera v2 with YOLO detection.
 
-Fast path:
-    - Use local YOLO detections first for quick/precise scene answers.
-Fallback:
-    - Use cloud vision only when local detection is unavailable or empty.
+Features:
+    - Capture frames from Pi Camera Module v2 (via picamera2)
+    - Local object/person detection using YOLOv8n (runs on Pi 5)
+    - Cloud vision queries via GPT-4o-mini (detailed scene descriptions)
 """
 
 import base64
@@ -32,17 +32,6 @@ except ImportError:
     _ULTRALYTICS_AVAILABLE = False
 
 
-def _get_resolution():
-    resolution = config.CAMERA_RESOLUTION
-    if (
-        isinstance(resolution, (list, tuple))
-        and len(resolution) == 2
-        and all(isinstance(v, int) for v in resolution)
-    ):
-        return int(resolution[0]), int(resolution[1])
-    return 640, 480
-
-
 def initialize():
     """Initialize camera and YOLO model."""
     global _camera, _camera_available, _yolo_model, _yolo_available
@@ -52,7 +41,7 @@ def initialize():
         try:
             _camera = Picamera2()
             camera_config = _camera.create_still_configuration(
-                main={"size": _get_resolution()},
+                main={"size": (640, 480)},
             )
             _camera.configure(camera_config)
             _camera.start()
@@ -66,9 +55,9 @@ def initialize():
     # Initialize YOLO
     if _ULTRALYTICS_AVAILABLE:
         try:
-            _yolo_model = YOLO(config.CAMERA_YOLO_MODEL)
+            _yolo_model = YOLO("yolov8n.pt")
             _yolo_available = True
-            print(f"YOLO detection ready ({config.CAMERA_YOLO_MODEL})")
+            print("YOLO detection ready (yolov8n)")
         except Exception as e:
             print(f"YOLO init failed: {e}")
     else:
@@ -103,17 +92,6 @@ def capture_frame():
         return None
 
 
-def _frame_to_bytes(frame, format="jpeg"):
-    """Convert PIL image to bytes."""
-    try:
-        buf = io.BytesIO()
-        frame.save(buf, format=format)
-        return buf.getvalue()
-    except Exception as e:
-        print(f"Image conversion error: {e}")
-        return None
-
-
 def capture_to_bytes(format="jpeg"):
     """Capture a frame and return as bytes.
 
@@ -123,7 +101,13 @@ def capture_to_bytes(format="jpeg"):
     frame = capture_frame()
     if frame is None:
         return None
-    return _frame_to_bytes(frame, format=format)
+    try:
+        buf = io.BytesIO()
+        frame.save(buf, format=format)
+        return buf.getvalue()
+    except Exception as e:
+        print(f"Image conversion error: {e}")
+        return None
 
 
 def detect_objects(frame=None):
@@ -144,25 +128,18 @@ def detect_objects(frame=None):
         return []
 
     try:
-        try:
-            results = _yolo_model(frame, verbose=False, conf=config.CAMERA_YOLO_CONFIDENCE)
-        except TypeError:
-            results = _yolo_model(frame, verbose=False)
-
+        results = _yolo_model(frame, verbose=False)
         detections = []
         for result in results:
             for box in result.boxes:
-                confidence = float(box.conf[0])
-                if confidence < config.CAMERA_YOLO_CONFIDENCE:
-                    continue
                 label = result.names[int(box.cls[0])]
+                confidence = float(box.conf[0])
                 coords = box.xyxy[0].tolist()
                 detections.append({
                     "label": label,
                     "confidence": confidence,
                     "box": coords,
                 })
-        detections.sort(key=lambda d: d["confidence"], reverse=True)
         return detections
     except Exception as e:
         print(f"Detection error: {e}")
@@ -179,97 +156,101 @@ def count_people(frame=None):
     return sum(1 for d in detections if d["label"] == "person")
 
 
-def summarize_detections(detections, max_objects=None):
-    """Build a concise, precise summary from YOLO detections."""
-    if not detections:
-        return "No clear objects detected right now."
+def describe_scene():
+    """Get a scene description using available AI.
 
-    max_items = max_objects or config.CAMERA_DESCRIBE_MAX_OBJECTS
-    counts = {}
-    best_confidence = {}
-    for det in detections:
-        label = det["label"]
-        counts[label] = counts.get(label, 0) + 1
-        best_confidence[label] = max(best_confidence.get(label, 0.0), det["confidence"])
+    Strategy:
+        1. If OpenAI key available → send image to GPT-4o vision API
+        2. If YOLO available → detect objects, send list to Cerebras for witty description
+        3. Fallback → raw YOLO detection text
 
-    ranked = sorted(
-        counts.items(),
-        key=lambda item: (-item[1], -best_confidence[item[0]], item[0]),
-    )
-
-    parts = []
-    for label, count in ranked[:max_items]:
-        conf_pct = round(best_confidence[label] * 100)
-        noun = label if count == 1 else f"{label}s"
-        parts.append(f"{count} {noun} ({conf_pct}% confidence)")
-
-    return "I see " + ", ".join(parts) + "."
-
-
-def describe_scene(quick=True):
-    """Describe the scene.
-
-    Args:
-        quick: If True, prioritize local low-latency answers.
+    Returns:
+        str: Scene description, or error message.
     """
-    frame = capture_frame()
-    if frame is None:
+    image_bytes = capture_to_bytes()
+    if image_bytes is None:
         return "I can't see anything — camera is not available."
 
-    # Fast and precise path: local detection summary.
-    if _yolo_available:
-        detections = detect_objects(frame)
-        if detections:
-            return summarize_detections(detections)
-        if quick:
-            return "No clear objects detected right now."
-
-    # Keep quick mode local-only when no detections are available.
-    if quick and not config.OPENAI_API_KEY:
-        return "Camera is online, but local detection is unavailable."
-
-    # Cloud fallback for extra detail.
+    # Strategy 1: OpenAI vision API (best quality, needs OpenAI key)
     if config.OPENAI_API_KEY:
-        image_bytes = _frame_to_bytes(frame)
-        if image_bytes is not None:
-            try:
-                from openai import OpenAI
+        try:
+            from openai import OpenAI
 
-                client = OpenAI(api_key=config.OPENAI_API_KEY)
-                b64_image = base64.b64encode(image_bytes).decode("utf-8")
+            client = OpenAI(api_key=config.OPENAI_API_KEY)
+            b64_image = base64.b64encode(image_bytes).decode("utf-8")
 
-                response = client.chat.completions.create(
-                    model=config.AI_MODEL,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": (
-                                        "Describe this image in one concise sentence. "
-                                        "List only clearly visible objects/people."
-                                    ),
+            response = client.chat.completions.create(
+                model=config.AI_MODEL,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": (
+                                    "You are TARS from Interstellar. Describe what you see "
+                                    "in this image in 1-2 sentences with your signature sarcasm. "
+                                    "Be specific about objects and people you notice."
+                                ),
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{b64_image}",
                                 },
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:image/jpeg;base64,{b64_image}",
-                                    },
-                                },
-                            ],
-                        }
-                    ],
-                    max_tokens=config.CAMERA_VISION_MAX_TOKENS,
-                    timeout=config.CAMERA_VISION_TIMEOUT,
-                )
-                content = response.choices[0].message.content
-                if content:
-                    return content.strip()
-            except Exception as e:
-                print(f"Vision API error: {e}")
+                            },
+                        ],
+                    }
+                ],
+                max_tokens=150,
+                timeout=15,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"Vision API error: {e}")
 
-    return "I can see the scene, but nothing stands out clearly yet."
+    # Strategy 2: YOLO detect + Cerebras describe (works without OpenAI key)
+    return _describe_with_yolo_and_ai()
+
+
+def _describe_with_yolo_and_ai():
+    """Describe scene using YOLO detections + Cerebras AI for witty response."""
+    detections = detect_objects()
+    if not detections:
+        # No YOLO or no detections — try AI with just "you see nothing"
+        try:
+            from tars.ai import chat
+            return chat.get_response(
+                "You looked around with your camera but couldn't detect anything. "
+                "Comment on what you see (nothing).",
+            )
+        except Exception:
+            return "I can see... absolutely nothing. My camera works but there's nothing worth looking at."
+
+    # Count objects by label
+    counts = {}
+    for d in detections:
+        label = d["label"]
+        counts[label] = counts.get(label, 0) + 1
+
+    parts = []
+    for label, count in sorted(counts.items(), key=lambda x: -x[1]):
+        if count == 1:
+            parts.append(f"a {label}")
+        else:
+            parts.append(f"{count} {label}s")
+
+    items = ", ".join(parts)
+
+    # Send detection list to Cerebras for a TARS-style description
+    try:
+        from tars.ai import chat
+        return chat.get_response(
+            f"You looked around with your camera and detected: {items}. "
+            "Describe what you see in your sarcastic TARS style.",
+        )
+    except Exception:
+        return f"I can see {items}. Not the most exciting view, but it's what you've got."
 
 
 def cleanup():

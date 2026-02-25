@@ -22,9 +22,9 @@ def test_get_voice_id_spanish():
 
 
 def test_get_voice_id_unknown_returns_default():
-    """Unknown language falls back to english edge-tts voice."""
+    """Unknown language falls back to Matthew."""
     result = get_voice_id("klingon")
-    assert result == "en-US-GuyNeural"
+    assert result == "Matthew"
 
 
 def test_get_supported_languages():

@@ -10,10 +10,7 @@ class LanguageState:
 
 def get_voice_id(language):
     """Get AWS Polly voice ID for a language."""
-    return config.LANGUAGE_VOICES.get(
-        language,
-        config.LANGUAGE_VOICES.get("english", "en-US-GuyNeural"),
-    )
+    return config.LANGUAGE_VOICES.get(language, "Matthew")
 
 
 def get_movement_message(movement_type, language="english"):

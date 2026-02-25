@@ -36,29 +36,54 @@ def process_command(command, state):
         for lang in language.get_supported_languages():
             if lang in cmd:
                 state.current_language = lang
-                response = f"Language set to {lang}."
+                response = chat.get_response(
+                    "Confirm language change",
+                    honesty=state.honesty,
+                    humor=state.humor,
+                    target_language=state.current_language,
+                )
                 _respond(response, state.current_language, state.text_only)
                 return state
 
     # Movement commands
     if "move forward" in cmd or "take 2 steps" in cmd:
         movement.move_forward(state.current_language)
-        response = "Forward step complete."
+        response = chat.get_response(
+            "Moving forward",
+            honesty=state.honesty,
+            humor=state.humor,
+            target_language=state.current_language,
+        )
         _respond(response, state.current_language, state.text_only)
 
     elif "turn left" in cmd:
         movement.turn_left(state.current_language)
-        response = "Turned left."
+        response = chat.get_response(
+            "Turning left",
+            honesty=state.honesty,
+            humor=state.humor,
+            target_language=state.current_language,
+        )
         _respond(response, state.current_language, state.text_only)
 
     elif "turn right" in cmd:
         movement.turn_right(state.current_language)
-        response = "Turned right."
+        response = chat.get_response(
+            "Turning right",
+            honesty=state.honesty,
+            humor=state.humor,
+            target_language=state.current_language,
+        )
         _respond(response, state.current_language, state.text_only)
 
     # Shutdown
     elif "stop" in cmd or cmd in ("exit", "quit"):
-        response = "Shutting down."
+        response = chat.get_response(
+            "Goodbye",
+            honesty=state.honesty,
+            humor=state.humor,
+            target_language=state.current_language,
+        )
         _respond(response, state.current_language, state.text_only)
         time.sleep(1)
         return "stop"
@@ -86,7 +111,8 @@ def process_command(command, state):
         if not camera.is_available():
             _respond("My eyes are offline. No camera detected.", state.current_language, state.text_only)
         else:
-            response = camera.describe_scene(quick=True)
+            _respond("Let me take a look...", state.current_language, state.text_only)
+            response = camera.describe_scene()
             _respond(response, state.current_language, state.text_only)
 
     elif "how many people" in cmd:
