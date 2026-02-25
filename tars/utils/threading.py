@@ -10,9 +10,10 @@ shutdown_event = threading.Event()
 class SharedState:
     """Thread-safe wrapper for LanguageState and other shared data."""
 
-    def __init__(self, state):
+    def __init__(self, state, text_only=False):
         self._state = state
         self._lock = threading.Lock()
+        self.text_only = text_only
 
     @property
     def current_language(self):

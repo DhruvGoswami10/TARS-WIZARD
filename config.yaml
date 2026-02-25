@@ -126,7 +126,7 @@ personality:
 ai:
   cerebras_model: llama3.1-8b   # Fast, lightweight — ideal for TARS one-liners
   model: gpt-4o-mini            # OpenAI fallback model
-  max_tokens: 30                # Keep responses short like movie TARS
+  max_tokens: 60                # Short but not truncated — TARS speaks in 1-2 sentences
   temperature: 0.9
 
 # ─── Weather ────────────────────────────────────────────────

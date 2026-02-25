@@ -7,13 +7,14 @@ from tars.ui import terminal
 from tars.voice import speaker
 
 
-def _respond(text, lang):
-    """Print response to terminal and speak it."""
+def _respond(text, lang, text_only=False):
+    """Print response to terminal and speak it (unless text-only mode)."""
     terminal.print_tars(text)
-    try:
-        speaker.speak(text, lang)
-    except Exception as e:
-        terminal.print_error(f"Speech error: {e}")
+    if not text_only:
+        try:
+            speaker.speak(text, lang)
+        except Exception as e:
+            terminal.print_error(f"Speech error: {e}")
 
 
 def process_command(command, state):
@@ -37,7 +38,7 @@ def process_command(command, state):
                     humor=state.humor,
                     target_language=state.current_language,
                 )
-                _respond(response, state.current_language)
+                _respond(response, state.current_language, state.text_only)
                 return state
 
     # Movement commands
@@ -49,7 +50,7 @@ def process_command(command, state):
             humor=state.humor,
             target_language=state.current_language,
         )
-        _respond(response, state.current_language)
+        _respond(response, state.current_language, state.text_only)
 
     elif "turn left" in cmd:
         movement.turn_left(state.current_language)
@@ -59,7 +60,7 @@ def process_command(command, state):
             humor=state.humor,
             target_language=state.current_language,
         )
-        _respond(response, state.current_language)
+        _respond(response, state.current_language, state.text_only)
 
     elif "turn right" in cmd:
         movement.turn_right(state.current_language)
@@ -69,7 +70,7 @@ def process_command(command, state):
             humor=state.humor,
             target_language=state.current_language,
         )
-        _respond(response, state.current_language)
+        _respond(response, state.current_language, state.text_only)
 
     # Shutdown
     elif "stop" in cmd or cmd in ("exit", "quit"):
@@ -79,42 +80,43 @@ def process_command(command, state):
             humor=state.humor,
             target_language=state.current_language,
         )
-        _respond(response, state.current_language)
+        _respond(response, state.current_language, state.text_only)
         time.sleep(1)
         return "stop"
 
     # Info commands
     elif "time" in cmd or "date" in cmd:
         response = info.get_current_time()
-        _respond(response, state.current_language)
+        _respond(response, state.current_language, state.text_only)
 
     elif "weather" in cmd:
         response = info.get_weather()
-        _respond(response, state.current_language)
+        _respond(response, state.current_language, state.text_only)
 
     # Settings commands
     elif "set humor" in cmd or "humor to" in cmd:
         response = settings.set_humor(cmd, state)
-        _respond(response, state.current_language)
+        _respond(response, state.current_language, state.text_only)
 
     elif "set honesty" in cmd or "honesty to" in cmd:
         response = settings.set_honesty(cmd, state)
-        _respond(response, state.current_language)
+        _respond(response, state.current_language, state.text_only)
 
     # Camera / vision commands
     elif any(phrase in cmd for phrase in ("what do you see", "look around", "describe")):
         if not camera.is_available():
-            _respond("My eyes are offline. No camera detected.", state.current_language)
+            _respond("My eyes are offline. No camera detected.", state.current_language, state.text_only)
         else:
-            _respond("Let me take a look...", state.current_language)
+            _respond("Let me take a look...", state.current_language, state.text_only)
             response = camera.describe_scene()
-            _respond(response, state.current_language)
+            _respond(response, state.current_language, state.text_only)
 
     elif "how many people" in cmd:
         if not camera.is_available():
-            _respond("I can't see anyone — no camera.", state.current_language)
+            _respond("I can't see anyone — no camera.", state.current_language, state.text_only)
         elif not camera.is_yolo_available():
-            _respond("My detection system is offline. I need ultralytics installed.", state.current_language)
+            msg = "My detection system is offline. I need ultralytics installed."
+            _respond(msg, state.current_language, state.text_only)
         else:
             count = camera.count_people()
             if count == 0:
@@ -123,11 +125,11 @@ def process_command(command, state):
                 response = "I see one person. Just you and me, I guess."
             else:
                 response = f"I count {count} people. That's {count} more than I'd prefer."
-            _respond(response, state.current_language)
+            _respond(response, state.current_language, state.text_only)
 
     elif "greet everyone" in cmd:
         if not camera.is_available() or not camera.is_yolo_available():
-            _respond("I can't see anyone to greet.", state.current_language)
+            _respond("I can't see anyone to greet.", state.current_language, state.text_only)
         else:
             count = camera.count_people()
             if count == 0:
@@ -146,7 +148,7 @@ def process_command(command, state):
                     humor=state.humor,
                     target_language=state.current_language,
                 )
-            _respond(response, state.current_language)
+            _respond(response, state.current_language, state.text_only)
 
     # Default — chat with AI
     else:
@@ -156,7 +158,7 @@ def process_command(command, state):
             humor=state.humor,
             target_language=state.current_language,
         )
-        _respond(response, state.current_language)
+        _respond(response, state.current_language, state.text_only)
 
     return state
 
@@ -180,7 +182,7 @@ def process_controller_command(command, state):
             humor=state.humor,
             target_language=state.current_language,
         )
-        _respond(response, state.current_language)
+        _respond(response, state.current_language, state.text_only)
         time.sleep(1)
         return "stop"
 
@@ -193,6 +195,6 @@ def process_controller_command(command, state):
             humor=state.humor,
             target_language=state.current_language,
         )
-        _respond(response, state.current_language)
+        _respond(response, state.current_language, state.text_only)
 
     return state

@@ -75,7 +75,7 @@ VOLUME_BOOST = get("voice.volume_boost", 8)
 # AI
 CEREBRAS_MODEL = get("ai.cerebras_model", "llama3.1-8b")
 AI_MODEL = get("ai.model", "gpt-4o-mini")
-AI_MAX_TOKENS = get("ai.max_tokens", 30)
+AI_MAX_TOKENS = get("ai.max_tokens", 60)
 AI_TEMPERATURE = get("ai.temperature", 0.9)
 
 # Personality

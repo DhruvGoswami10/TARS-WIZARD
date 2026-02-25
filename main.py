@@ -39,11 +39,13 @@ def first_run_check():
     terminal.print_system("First run detected — let's set up your API keys.")
     terminal.print_system("You can always edit .env later to change these.\n")
 
-    openai_key = input("OpenAI API Key (required for AI chat, press Enter to skip): ").strip()
+    cerebras_key = input("Cerebras API Key (primary AI — free at cloud.cerebras.ai, Enter to skip): ").strip()
+    openai_key = input("OpenAI API Key (fallback AI, press Enter to skip): ").strip()
     weather_key = input("OpenWeatherMap API Key (optional, press Enter to skip): ").strip()
     city = input("Your city name for weather (optional, press Enter to skip): ").strip()
 
     lines = []
+    lines.append(f"CEREBRAS_API_KEY={cerebras_key}")
     lines.append(f"OPENAI_API_KEY={openai_key}")
     lines.append(f"WEATHER_API_KEY={weather_key}")
     lines.append(f"CITY_NAME={city}")
@@ -230,7 +232,7 @@ def main():
 
     # Create shared state
     lang_state = LanguageState()
-    state = SharedState(lang_state)
+    state = SharedState(lang_state, text_only=args.text_only)
 
     # Create voice state machine
     use_wake_word = not args.text_only and args.wake_word
