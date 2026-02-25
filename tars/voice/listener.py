@@ -52,10 +52,24 @@ def _get_recognizer():
 
 
 def _find_mic_index():
-    """Find a real microphone (skip HDMI outputs)."""
+    """Find a real microphone (skip HDMI outputs).
+
+    Returns a valid device index, or None to use the system default.
+    """
     try:
         names = sr.Microphone.list_microphone_names()
+        # Count actual available devices (may be fewer than names list)
+        try:
+            import pyaudio
+            pa = pyaudio.PyAudio()
+            device_count = pa.get_device_count()
+            pa.terminate()
+        except Exception:
+            device_count = len(names)
+
         for i, name in enumerate(names):
+            if i >= device_count:
+                break  # No more valid devices
             name_lower = name.lower()
             if any(kw in name_lower for kw in ("usb", "mic", "input", "capture")):
                 return i
