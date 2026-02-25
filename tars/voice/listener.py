@@ -16,6 +16,20 @@ try:
 except ImportError:
     VAD_AVAILABLE = False
 
+# Persistent recognizer — avoids recreating every call
+_recognizer = None
+_calibrated = False
+
+
+def _get_recognizer():
+    """Get or create the shared recognizer instance."""
+    global _recognizer
+    if _recognizer is None:
+        _recognizer = sr.Recognizer()
+        _recognizer.dynamic_energy_threshold = True
+        _recognizer.pause_threshold = 2.0 if VAD_AVAILABLE else 1.5
+    return _recognizer
+
 
 def listen(phrase_time_limit=None):
     """Listen for a voice command via microphone.
@@ -26,19 +40,16 @@ def listen(phrase_time_limit=None):
     Returns:
         Lowercase string of recognized speech, or None on failure.
     """
-    recognizer = sr.Recognizer()
-
-    # Tune recognizer for better results
-    recognizer.dynamic_energy_threshold = True
-    recognizer.pause_threshold = 1.5  # seconds of silence before considering phrase complete
-
-    if VAD_AVAILABLE:
-        # With VAD, we can use longer pause threshold — it's smarter about silence
-        recognizer.pause_threshold = 2.0
+    global _calibrated
+    recognizer = _get_recognizer()
 
     try:
         with sr.Microphone() as source:
-            recognizer.adjust_for_ambient_noise(source, duration=0.5)
+            # Only calibrate once — not every listen cycle
+            if not _calibrated:
+                recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                _calibrated = True
+
             audio = recognizer.listen(
                 source,
                 timeout=config.LISTEN_TIMEOUT,

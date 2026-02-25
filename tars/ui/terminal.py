@@ -66,6 +66,8 @@ def print_help():
     table.add_row("what do you see", "Describe the scene (camera)")
     table.add_row("how many people", "Count people (YOLO)")
     table.add_row("greet everyone", "Greet visible people")
+    table.add_row("set humor to [N]%", "Adjust sarcasm level")
+    table.add_row("set honesty to [N]%", "Adjust honesty level")
     table.add_row("settings", "Show current settings")
     table.add_row("help", "Show this help")
     table.add_row("stop / exit / quit", "Shut down TARS")

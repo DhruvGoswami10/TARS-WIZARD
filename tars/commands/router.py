@@ -1,9 +1,19 @@
 import time
 
 from tars.ai import chat
-from tars.commands import info, language, movement
+from tars.commands import info, language, movement, settings
 from tars.hardware import camera
+from tars.ui import terminal
 from tars.voice import speaker
+
+
+def _respond(text, lang):
+    """Print response to terminal and speak it."""
+    terminal.print_tars(text)
+    try:
+        speaker.speak(text, lang)
+    except Exception as e:
+        terminal.print_error(f"Speech error: {e}")
 
 
 def process_command(command, state):
@@ -14,12 +24,12 @@ def process_command(command, state):
     if not command:
         return state
 
-    print(f"Received command: {command}")
+    cmd = command.lower()
 
     # Language switching
-    if "speak" in command and any(lang in command for lang in language.get_supported_languages()):
+    if "speak" in cmd and any(lang in cmd for lang in language.get_supported_languages()):
         for lang in language.get_supported_languages():
-            if lang in command:
+            if lang in cmd:
                 state.current_language = lang
                 response = chat.get_response(
                     "Confirm language change",
@@ -27,11 +37,11 @@ def process_command(command, state):
                     humor=state.humor,
                     target_language=state.current_language,
                 )
-                speaker.speak(response, state.current_language)
+                _respond(response, state.current_language)
                 return state
 
     # Movement commands
-    if "move forward" in command or "take 2 steps" in command:
+    if "move forward" in cmd or "take 2 steps" in cmd:
         movement.move_forward(state.current_language)
         response = chat.get_response(
             "Moving forward",
@@ -39,9 +49,9 @@ def process_command(command, state):
             humor=state.humor,
             target_language=state.current_language,
         )
-        speaker.speak(response, state.current_language)
+        _respond(response, state.current_language)
 
-    elif "turn left" in command:
+    elif "turn left" in cmd:
         movement.turn_left(state.current_language)
         response = chat.get_response(
             "Turning left",
@@ -49,9 +59,9 @@ def process_command(command, state):
             humor=state.humor,
             target_language=state.current_language,
         )
-        speaker.speak(response, state.current_language)
+        _respond(response, state.current_language)
 
-    elif "turn right" in command:
+    elif "turn right" in cmd:
         movement.turn_right(state.current_language)
         response = chat.get_response(
             "Turning right",
@@ -59,43 +69,52 @@ def process_command(command, state):
             humor=state.humor,
             target_language=state.current_language,
         )
-        speaker.speak(response, state.current_language)
+        _respond(response, state.current_language)
 
     # Shutdown
-    elif "stop" in command or "exit" in command:
+    elif "stop" in cmd or cmd in ("exit", "quit"):
         response = chat.get_response(
             "Goodbye",
             honesty=state.honesty,
             humor=state.humor,
             target_language=state.current_language,
         )
-        speaker.speak(response, state.current_language)
+        _respond(response, state.current_language)
         time.sleep(1)
         return "stop"
 
     # Info commands
-    elif "time" in command or "date" in command:
+    elif "time" in cmd or "date" in cmd:
         response = info.get_current_time()
-        speaker.speak(response, state.current_language)
+        _respond(response, state.current_language)
 
-    elif "weather" in command:
+    elif "weather" in cmd:
         response = info.get_weather()
-        speaker.speak(response, state.current_language)
+        _respond(response, state.current_language)
+
+    # Settings commands
+    elif "set humor" in cmd or "humor to" in cmd:
+        response = settings.set_humor(cmd, state)
+        _respond(response, state.current_language)
+
+    elif "set honesty" in cmd or "honesty to" in cmd:
+        response = settings.set_honesty(cmd, state)
+        _respond(response, state.current_language)
 
     # Camera / vision commands
-    elif any(phrase in command for phrase in ("what do you see", "look around", "describe")):
+    elif any(phrase in cmd for phrase in ("what do you see", "look around", "describe")):
         if not camera.is_available():
-            speaker.speak("My eyes are offline. No camera detected.", state.current_language)
+            _respond("My eyes are offline. No camera detected.", state.current_language)
         else:
-            speaker.speak("Let me take a look...", state.current_language)
+            _respond("Let me take a look...", state.current_language)
             response = camera.describe_scene()
-            speaker.speak(response, state.current_language)
+            _respond(response, state.current_language)
 
-    elif "how many people" in command:
+    elif "how many people" in cmd:
         if not camera.is_available():
-            speaker.speak("I can't see anyone — no camera.", state.current_language)
+            _respond("I can't see anyone — no camera.", state.current_language)
         elif not camera.is_yolo_available():
-            speaker.speak("My detection system is offline. I need ultralytics installed.", state.current_language)
+            _respond("My detection system is offline. I need ultralytics installed.", state.current_language)
         else:
             count = camera.count_people()
             if count == 0:
@@ -104,11 +123,11 @@ def process_command(command, state):
                 response = "I see one person. Just you and me, I guess."
             else:
                 response = f"I count {count} people. That's {count} more than I'd prefer."
-            speaker.speak(response, state.current_language)
+            _respond(response, state.current_language)
 
-    elif "greet everyone" in command:
+    elif "greet everyone" in cmd:
         if not camera.is_available() or not camera.is_yolo_available():
-            speaker.speak("I can't see anyone to greet.", state.current_language)
+            _respond("I can't see anyone to greet.", state.current_language)
         else:
             count = camera.count_people()
             if count == 0:
@@ -127,7 +146,7 @@ def process_command(command, state):
                     humor=state.humor,
                     target_language=state.current_language,
                 )
-            speaker.speak(response, state.current_language)
+            _respond(response, state.current_language)
 
     # Default — chat with AI
     else:
@@ -137,7 +156,7 @@ def process_command(command, state):
             humor=state.humor,
             target_language=state.current_language,
         )
-        speaker.speak(response, state.current_language)
+        _respond(response, state.current_language)
 
     return state
 
@@ -161,7 +180,7 @@ def process_controller_command(command, state):
             humor=state.humor,
             target_language=state.current_language,
         )
-        speaker.speak(response, state.current_language)
+        _respond(response, state.current_language)
         time.sleep(1)
         return "stop"
 
@@ -174,6 +193,6 @@ def process_controller_command(command, state):
             humor=state.humor,
             target_language=state.current_language,
         )
-        speaker.speak(response, state.current_language)
+        _respond(response, state.current_language)
 
     return state

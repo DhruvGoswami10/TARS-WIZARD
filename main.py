@@ -2,9 +2,9 @@
 """TARS-WIZARD v2.0 — Single entry point.
 
 Usage:
-    python main.py              # Interactive mode (text + voice)
+    python main.py              # Interactive mode (text + voice, always listening)
     python main.py --text-only  # Text-only mode (no mic/speaker)
-    python main.py --no-wake    # Voice mode without wake word (always listening)
+    python main.py --wake-word  # Require "Hey TARS" before listening
     python main.py --help       # Show help
 """
 
@@ -56,20 +56,24 @@ def first_run_check():
     sys.exit(0)
 
 
-def voice_pipeline_thread(state, voice_sm, use_wake_word=True):
+def voice_pipeline_thread(state, voice_sm, use_wake_word=False):
     """Full voice pipeline: wake word → listen → think → speak → repeat."""
     wake_detector = WakeWordDetector() if use_wake_word else None
+    wake_prompt_shown = False
 
     while not is_shutting_down():
         try:
             # SLEEPING: Wait for wake word (or skip if no wake word mode)
             if use_wake_word:
                 voice_sm.transition(VoiceState.SLEEPING)
-                terminal.print_system('Say "Hey TARS" or press Enter...')
+                if not wake_prompt_shown:
+                    terminal.print_system('Say "Hey TARS" or press Enter...')
+                    wake_prompt_shown = True
                 detected = wake_detector.listen_for_wake_word(shutdown_event)
                 if not detected or is_shutting_down():
                     continue
                 terminal.print_system("Wake word detected!")
+                wake_prompt_shown = False  # Show again after next command
 
             # LISTENING: Record user speech
             voice_sm.transition(VoiceState.LISTENING)
@@ -178,7 +182,11 @@ def text_input_loop(state):
             continue
 
         terminal.print_user(command)
-        result = process_command(command, state)
+        try:
+            result = process_command(command, state)
+        except Exception as e:
+            terminal.print_error(f"Command failed: {e}")
+            continue
 
         if result == "stop":
             request_shutdown()
@@ -193,9 +201,9 @@ def main():
         help="Text-only mode (no microphone or speaker)",
     )
     parser.add_argument(
-        "--no-wake",
+        "--wake-word",
         action="store_true",
-        help="Voice mode without wake word (always listening)",
+        help="Enable wake word detection (say 'Hey TARS' to activate)",
     )
     args = parser.parse_args()
 
@@ -225,7 +233,7 @@ def main():
     state = SharedState(lang_state)
 
     # Create voice state machine
-    use_wake_word = not args.text_only and not args.no_wake
+    use_wake_word = not args.text_only and args.wake_word
     voice_sm = VoiceStateMachine(use_wake_word=use_wake_word)
 
     # Initialize servos to neutral
