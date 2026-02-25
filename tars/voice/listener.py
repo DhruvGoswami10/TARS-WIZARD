@@ -31,6 +31,19 @@ def _get_recognizer():
     return _recognizer
 
 
+def _find_mic_index():
+    """Find a real microphone (skip HDMI outputs)."""
+    try:
+        names = sr.Microphone.list_microphone_names()
+        for i, name in enumerate(names):
+            name_lower = name.lower()
+            if any(kw in name_lower for kw in ("usb", "mic", "input", "capture")):
+                return i
+    except Exception:
+        pass
+    return None
+
+
 def listen(phrase_time_limit=None):
     """Listen for a voice command via microphone.
 
@@ -44,7 +57,8 @@ def listen(phrase_time_limit=None):
     recognizer = _get_recognizer()
 
     try:
-        with sr.Microphone() as source:
+        mic_index = _find_mic_index()
+        with sr.Microphone(device_index=mic_index) as source:
             # Only calibrate once — not every listen cycle
             if not _calibrated:
                 recognizer.adjust_for_ambient_noise(source, duration=0.5)

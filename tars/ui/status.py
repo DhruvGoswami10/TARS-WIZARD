@@ -66,12 +66,17 @@ def check_controller():
 
 
 def check_microphone():
-    """Check if a microphone is available."""
+    """Check if a microphone is available (skips HDMI outputs)."""
     try:
         import speech_recognition as sr
 
+        names = sr.Microphone.list_microphone_names()
+        for i, name in enumerate(names):
+            if any(kw in name.lower() for kw in ("usb", "mic", "input", "capture")):
+                return True, f"Available ({name})"
+        # No USB/mic keyword found — try default
         mic = sr.Microphone()
-        return True, f"Available ({sr.Microphone.list_microphone_names()[mic.device_index]})"
+        return True, f"Available ({names[mic.device_index]})"
     except (ImportError, OSError, IndexError):
         return False, "No microphone detected"
     except Exception:
