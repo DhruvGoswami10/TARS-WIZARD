@@ -61,6 +61,7 @@ PULSE_MAX = get("servo.pulse.max", 2000)
 # Movement timing
 STEP_DELAY = get("movement.step_delay", 0.2)
 ARM_DELAY = get("movement.arm_delay", 0.3)
+SETTLE_DELAY = get("movement.settle_delay", 0.4)
 
 # Voice
 LISTEN_TIMEOUT = get("voice.listen_timeout", 3)

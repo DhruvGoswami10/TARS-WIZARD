@@ -19,6 +19,7 @@ def move_forward(language="english"):
     servos.set_angle(config.CHANNEL_RIGHT_ARM, config.RIGHT_ARM_NEUTRAL_POS)
     time.sleep(config.STEP_DELAY)
     servos.set_angle(config.CHANNEL_TORSO, config.NEUTRAL_POS)
+    time.sleep(config.SETTLE_DELAY)
 
 
 def turn_left(language="english"):
@@ -33,6 +34,7 @@ def turn_left(language="english"):
     time.sleep(config.STEP_DELAY)
     servos.set_angle(config.CHANNEL_LEFT_ARM, config.LEFT_ARM_NEUTRAL_POS)
     servos.set_angle(config.CHANNEL_RIGHT_ARM, config.RIGHT_ARM_NEUTRAL_POS)
+    time.sleep(config.SETTLE_DELAY)
 
 
 def turn_right(language="english"):
@@ -47,6 +49,7 @@ def turn_right(language="english"):
     time.sleep(config.STEP_DELAY)
     servos.set_angle(config.CHANNEL_LEFT_ARM, config.LEFT_ARM_NEUTRAL_POS)
     servos.set_angle(config.CHANNEL_RIGHT_ARM, config.RIGHT_ARM_NEUTRAL_POS)
+    time.sleep(config.SETTLE_DELAY)
 
 
 def neutral(language="english"):

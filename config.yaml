@@ -32,6 +32,7 @@ servo:
 movement:
   step_delay: 0.2
   arm_delay: 0.3
+  settle_delay: 0.4          # pause after returning to neutral (prevents overshoot swing)
 
 # ─── Voice Settings ─────────────────────────────────────────
 voice:
