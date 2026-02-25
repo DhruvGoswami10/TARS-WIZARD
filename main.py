@@ -13,6 +13,21 @@ import sys
 import threading
 import time
 
+# Suppress ALSA/JACK error spam before any audio library imports
+try:
+    import ctypes
+
+    _ERROR_HANDLER = ctypes.CFUNCTYPE(None, ctypes.c_char_p, ctypes.c_int,
+                                      ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p)
+
+    def _alsa_error_handler(filename, line, function, err, fmt):
+        pass  # Swallow all ALSA errors
+
+    _c_error_handler = _ERROR_HANDLER(_alsa_error_handler)
+    ctypes.cdll.LoadLibrary("libasound.so.2").snd_lib_error_set_handler(_c_error_handler)
+except Exception:
+    pass  # Not on Linux or no ALSA — that's fine
+
 from tars.ai import chat
 from tars.commands.language import LanguageState
 from tars.commands.movement import neutral
@@ -150,13 +165,6 @@ def controller_thread(state):
                 if event.code in button_actions:
                     name, action = button_actions[event.code]
                     action(state.current_language)
-                    response = chat.get_response(
-                        name.replace("_", " ").capitalize(),
-                        honesty=state.honesty,
-                        humor=state.humor,
-                        target_language=state.current_language,
-                    )
-                    speaker.speak(response, state.current_language)
         except Exception:
             pass
         time.sleep(0.01)
