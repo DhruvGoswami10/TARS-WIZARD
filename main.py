@@ -4,6 +4,7 @@
 Usage:
     python main.py              # Interactive mode (text + voice)
     python main.py --text-only  # Text-only mode (no mic/speaker)
+    python main.py --no-wake    # Voice mode without wake word (always listening)
     python main.py --help       # Show help
 """
 
@@ -21,6 +22,8 @@ from tars.ui import terminal
 from tars.utils.logging import setup as setup_logging
 from tars.utils.threading import SharedState, is_shutting_down, request_shutdown, shutdown_event
 from tars.voice import listener, speaker
+from tars.voice.voice_state import VoiceState, VoiceStateMachine
+from tars.voice.wake_word import WakeWordDetector
 
 
 def first_run_check():
@@ -53,19 +56,41 @@ def first_run_check():
     sys.exit(0)
 
 
-def voice_listener_thread(state):
-    """Continuously listen for voice commands in background."""
+def voice_pipeline_thread(state, voice_sm, use_wake_word=True):
+    """Full voice pipeline: wake word → listen → think → speak → repeat."""
+    wake_detector = WakeWordDetector() if use_wake_word else None
+
     while not is_shutting_down():
         try:
+            # SLEEPING: Wait for wake word (or skip if no wake word mode)
+            if use_wake_word:
+                voice_sm.transition(VoiceState.SLEEPING)
+                terminal.print_system('Say "Hey TARS" or press Enter...')
+                detected = wake_detector.listen_for_wake_word(shutdown_event)
+                if not detected or is_shutting_down():
+                    continue
+                terminal.print_system("Wake word detected!")
+
+            # LISTENING: Record user speech
+            voice_sm.transition(VoiceState.LISTENING)
             command = listener.listen()
-            if command and not is_shutting_down():
-                terminal.print_user(command)
-                result = process_command(command, state)
-                if result == "stop":
-                    request_shutdown()
-                    return
+
+            if not command or is_shutting_down():
+                continue
+
+            terminal.print_user(command)
+
+            # THINKING: Process command
+            voice_sm.transition(VoiceState.THINKING)
+            result = process_command(command, state)
+
+            if result == "stop":
+                request_shutdown()
+                return
+
         except Exception as e:
-            terminal.print_error(f"Voice listener error: {e}")
+            terminal.print_error(f"Voice pipeline error: {e}")
+
         time.sleep(0.1)
 
 
@@ -167,6 +192,11 @@ def main():
         action="store_true",
         help="Text-only mode (no microphone or speaker)",
     )
+    parser.add_argument(
+        "--no-wake",
+        action="store_true",
+        help="Voice mode without wake word (always listening)",
+    )
     args = parser.parse_args()
 
     # Set up logging
@@ -193,6 +223,10 @@ def main():
     lang_state = LanguageState()
     state = SharedState(lang_state)
 
+    # Create voice state machine
+    use_wake_word = not args.text_only and not args.no_wake
+    voice_sm = VoiceStateMachine(use_wake_word=use_wake_word)
+
     # Initialize servos to neutral
     neutral()
 
@@ -204,8 +238,8 @@ def main():
 
     if not args.text_only:
         voice_thread = threading.Thread(
-            target=voice_listener_thread,
-            args=(state,),
+            target=voice_pipeline_thread,
+            args=(state, voice_sm, use_wake_word),
             daemon=True,
         )
         voice_thread.start()
@@ -227,6 +261,9 @@ def main():
     finally:
         terminal.print_system("\nShutting down...")
         request_shutdown()
+
+        # Stop any ongoing speech
+        speaker.stop_speaking()
 
         # Return servos to neutral position
         try:

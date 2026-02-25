@@ -14,6 +14,14 @@ SpeechRecognition>=3.10.0
 pydub>=0.25.1
 PyAudio>=0.2.13
 
+# Wake Word Detection (optional — falls back to keyboard trigger)
+# pip install openwakeword
+# openwakeword>=0.6.0
+
+# Voice Activity Detection (optional — improves mic cutoff)
+# pip install webrtcvad
+# webrtcvad>=2.0.10
+
 # Configuration
 python-dotenv>=1.0.0
 PyYAML>=6.0

@@ -1,6 +1,16 @@
+"""Text-to-speech for TARS — edge-tts with robotic voice effects.
+
+Features:
+    - Free TTS via edge-tts (no API key needed)
+    - Robotic voice processing (band-pass filter, speedup)
+    - Interruptible playback (can stop mid-sentence)
+"""
+
 import asyncio
 import io
+import os
 import tempfile
+import threading
 
 import edge_tts
 from pydub import AudioSegment, effects
@@ -11,17 +21,26 @@ from tars.commands.language import get_voice_id
 
 _initialized = False
 
+# Interrupt support — allows stopping playback mid-sentence
+_playback_thread = None
+_playback_stop = threading.Event()
+_speaking = threading.Event()
+
 
 def initialize():
     """Initialize the speech system."""
     global _initialized
     _initialized = True
-    print("Edge TTS initialized (no API key required)")
 
 
 def is_available():
     """Check if voice synthesis is available."""
     return _initialized
+
+
+def is_speaking():
+    """Check if TARS is currently speaking."""
+    return _speaking.is_set()
 
 
 async def _generate_speech_async(text, voice_id):
@@ -32,7 +51,6 @@ async def _generate_speech_async(text, voice_id):
         rate=config.SPEECH_RATE,
         pitch=config.SPEECH_PITCH,
     )
-    # edge-tts writes to a file; use a temp file then read it back
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
         tmp_path = tmp.name
     await communicate.save(tmp_path)
@@ -48,9 +66,6 @@ def generate_speech(text, language="english"):
         tmp_path = asyncio.run(_generate_speech_async(text, voice_id))
         with open(tmp_path, "rb") as f:
             audio_data = f.read()
-        # Clean up temp file
-        import os
-
         os.unlink(tmp_path)
         return io.BytesIO(audio_data)
     except Exception as e:
@@ -70,16 +85,52 @@ def modify_voice(audio_stream):
     return sound
 
 
-def play_audio(sound):
-    """Play an audio segment."""
-    play(sound)
+def _play_interruptible(sound):
+    """Play audio in chunks so it can be interrupted."""
+    _speaking.set()
+    _playback_stop.clear()
+
+    chunk_ms = 200  # Check for interrupts every 200ms
+    total_ms = len(sound)
+
+    try:
+        pos = 0
+        while pos < total_ms:
+            if _playback_stop.is_set():
+                break
+            end = min(pos + chunk_ms, total_ms)
+            chunk = sound[pos:end]
+            play(chunk)
+            pos = end
+    finally:
+        _speaking.clear()
 
 
-def speak(text, language="english"):
+def play_audio(sound, interruptible=True):
+    """Play an audio segment, optionally in an interruptible thread."""
+    global _playback_thread
+
+    if interruptible:
+        _playback_thread = threading.Thread(
+            target=_play_interruptible, args=(sound,), daemon=True
+        )
+        _playback_thread.start()
+        _playback_thread.join()
+    else:
+        play(sound)
+
+
+def stop_speaking():
+    """Interrupt current playback."""
+    _playback_stop.set()
+    if _playback_thread and _playback_thread.is_alive():
+        _playback_thread.join(timeout=1.0)
+
+
+def speak(text, language="english", interruptible=True):
     """Full pipeline: generate speech, apply effects, play audio."""
-    print(f"TARS: {text}")
     audio_stream = generate_speech(text, language)
     if audio_stream is None:
         return
     modified_sound = modify_voice(audio_stream)
-    play_audio(modified_sound)
+    play_audio(modified_sound, interruptible=interruptible)
