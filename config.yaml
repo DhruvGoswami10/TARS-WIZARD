@@ -121,9 +121,12 @@ personality:
   default_language: english
 
 # ─── AI Model ──────────────────────────────────────────────
+# Cerebras is the primary backend (fastest inference).
+# OpenAI is the fallback. Ollama is the offline fallback.
 ai:
-  model: gpt-4o-mini
-  max_tokens: 50
+  cerebras_model: llama3.1-8b   # Fast, lightweight — ideal for TARS one-liners
+  model: gpt-4o-mini            # OpenAI fallback model
+  max_tokens: 30                # Keep responses short like movie TARS
   temperature: 0.9
 
 # ─── Weather ────────────────────────────────────────────────

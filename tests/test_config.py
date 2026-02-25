@@ -41,8 +41,9 @@ def test_voice_defaults_loaded():
 
 def test_ai_defaults_loaded():
     """AI config values are loaded correctly."""
+    assert config.CEREBRAS_MODEL == "llama3.1-8b"
     assert config.AI_MODEL == "gpt-4o-mini"
-    assert config.AI_MAX_TOKENS == 50
+    assert config.AI_MAX_TOKENS == 30
     assert config.AI_TEMPERATURE == 0.9
 
 

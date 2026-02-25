@@ -1,13 +1,14 @@
-"""Integration tests for tars/ai/chat.py — mocked OpenAI and local LLM."""
+"""Integration tests for tars/ai/chat.py — Cerebras, OpenAI, and local LLM."""
 
 from unittest.mock import MagicMock, patch
 
 
 @patch("tars.ai.chat.local_llm")
-@patch("tars.ai.chat._client")
-@patch("tars.ai.chat._openai_available", True)
-def test_get_response_openai_success(mock_client, mock_local):
-    """Returns OpenAI response when available."""
+@patch("tars.ai.chat._cerebras_client")
+@patch("tars.ai.chat._cerebras_available", True)
+@patch("tars.ai.chat._openai_available", False)
+def test_get_response_cerebras_success(mock_client, mock_local):
+    """Returns Cerebras response when available."""
     from tars.ai.chat import get_response
 
     mock_choice = MagicMock()
@@ -21,10 +22,29 @@ def test_get_response_openai_success(mock_client, mock_local):
 
 
 @patch("tars.ai.chat.local_llm")
-@patch("tars.ai.chat._client")
+@patch("tars.ai.chat._openai_client")
+@patch("tars.ai.chat._cerebras_available", False)
 @patch("tars.ai.chat._openai_available", True)
+def test_get_response_openai_fallback(mock_client, mock_local):
+    """Falls back to OpenAI when Cerebras is not configured."""
+    from tars.ai.chat import get_response
+
+    mock_choice = MagicMock()
+    mock_choice.message.content = "OpenAI response."
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+    mock_client.chat.completions.create.return_value = mock_response
+
+    result = get_response("Hello")
+    assert result == "OpenAI response."
+
+
+@patch("tars.ai.chat.local_llm")
+@patch("tars.ai.chat._cerebras_client")
+@patch("tars.ai.chat._cerebras_available", True)
+@patch("tars.ai.chat._openai_available", False)
 def test_get_response_falls_back_to_local(mock_client, mock_local):
-    """Falls back to local LLM when OpenAI fails."""
+    """Falls back to local LLM when Cerebras fails."""
     from tars.ai.chat import get_response
 
     mock_client.chat.completions.create.side_effect = Exception("API error")
@@ -36,6 +56,7 @@ def test_get_response_falls_back_to_local(mock_client, mock_local):
 
 
 @patch("tars.ai.chat.local_llm")
+@patch("tars.ai.chat._cerebras_available", False)
 @patch("tars.ai.chat._openai_available", False)
 def test_get_response_no_backends(mock_local):
     """Returns offline message when no backends available."""
@@ -44,12 +65,13 @@ def test_get_response_no_backends(mock_local):
     mock_local.is_available.return_value = False
 
     result = get_response("Hello")
-    assert "offline" in result.lower() or "API key" in result.lower()
+    assert "offline" in result.lower() or "api" in result.lower()
 
 
 @patch("tars.ai.chat.local_llm")
-@patch("tars.ai.chat._client")
-@patch("tars.ai.chat._openai_available", True)
+@patch("tars.ai.chat._cerebras_client")
+@patch("tars.ai.chat._cerebras_available", True)
+@patch("tars.ai.chat._openai_available", False)
 def test_get_response_passes_personality(mock_client, mock_local):
     """Personality settings are passed to the system prompt."""
     from tars.ai.chat import get_response

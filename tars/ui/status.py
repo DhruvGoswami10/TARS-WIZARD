@@ -3,14 +3,22 @@
 from tars import config
 
 
+def check_cerebras():
+    """Check if Cerebras API key is configured."""
+    if config.CEREBRAS_API_KEY:
+        key = config.CEREBRAS_API_KEY
+        masked = key[:8] + "..." + key[-4:] if len(key) > 12 else "***"
+        return True, f"Configured ({masked})"
+    return False, "Not configured (set CEREBRAS_API_KEY)"
+
+
 def check_openai():
     """Check if OpenAI API key is configured."""
     if config.OPENAI_API_KEY:
-        # Mask the key for display
         key = config.OPENAI_API_KEY
         masked = key[:8] + "..." + key[-4:] if len(key) > 12 else "***"
         return True, f"Configured ({masked})"
-    return False, "Not configured — AI responses won't work"
+    return False, "Not configured (optional fallback)"
 
 
 def check_weather():
@@ -122,6 +130,7 @@ def check_camera():
 def get_all_status():
     """Run all checks and return results."""
     return {
+        "Cerebras AI": check_cerebras(),
         "OpenAI API": check_openai(),
         "Local LLM": check_local_llm(),
         "Voice (edge-tts)": check_edge_tts(),
