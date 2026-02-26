@@ -42,7 +42,7 @@ def _suppress_stderr():
         yield
 
 
-class _StableMic:
+class _StableMic(sr.AudioSource):
     """Microphone source compatible with sr.Recognizer.listen().
 
     Uses a shared PyAudio instance so device indices stay stable.
