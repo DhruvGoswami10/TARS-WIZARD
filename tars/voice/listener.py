@@ -4,6 +4,7 @@ Uses SpeechRecognition with Google Speech API.
 Bypasses sr.Microphone entirely — uses PyAudio directly with a SINGLE
 persistent instance so device indices never change between calls.
 A fresh stream is opened/closed per listen() call to avoid stale buffers.
+Stream is wrapped to suppress overflow errors (matching SR's behavior).
 """
 
 import contextlib
@@ -42,12 +43,33 @@ def _suppress_stderr():
         yield
 
 
+class _OverflowSafeStream:
+    """Wraps a PyAudio stream to suppress overflow errors.
+
+    This is exactly what SpeechRecognition's MicrophoneStream does internally.
+    Without this, PyAudio raises IOError -9981 on every buffer overflow.
+    """
+
+    def __init__(self, pyaudio_stream):
+        self.pyaudio_stream = pyaudio_stream
+
+    def read(self, size):
+        return self.pyaudio_stream.read(size, exception_on_overflow=False)
+
+    def close(self):
+        try:
+            if not self.pyaudio_stream.is_stopped():
+                self.pyaudio_stream.stop_stream()
+        finally:
+            self.pyaudio_stream.close()
+
+
 class _StableMic(sr.AudioSource):
     """Microphone source compatible with sr.Recognizer.listen().
 
     Uses a shared PyAudio instance so device indices stay stable.
     Opens a fresh stream each time (via context manager) to avoid
-    stale buffers that cause the mic to stop hearing.
+    stale buffers. Wraps stream to suppress overflow errors.
     """
 
     CHUNK = 1024
@@ -61,7 +83,7 @@ class _StableMic(sr.AudioSource):
         self.stream = None
 
     def __enter__(self):
-        self.stream = self.pa.open(
+        raw_stream = self.pa.open(
             input=True,
             input_device_index=self.device_index,
             format=self.format,
@@ -69,12 +91,12 @@ class _StableMic(sr.AudioSource):
             channels=1,
             frames_per_buffer=self.CHUNK,
         )
+        self.stream = _OverflowSafeStream(raw_stream)
         return self
 
     def __exit__(self, *args):
         if self.stream:
             try:
-                self.stream.stop_stream()
                 self.stream.close()
             except Exception:
                 pass
