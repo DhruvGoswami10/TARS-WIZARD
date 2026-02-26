@@ -1,7 +1,7 @@
 """Speech recognition for TARS — listens for voice commands.
 
 Uses SpeechRecognition with Google Speech API.
-Optimized for low latency: device cached, stderr suppressed.
+Finds the USB mic by scanning PyAudio for input-capable devices.
 """
 
 import contextlib
@@ -11,9 +11,10 @@ import speech_recognition as sr
 
 from tars import config
 
-# Persistent state — avoids recreating every listen cycle
 _recognizer = None
 _calibrated = False
+_mic_index = None
+_mic_index_found = False
 
 
 @contextlib.contextmanager
@@ -39,12 +40,43 @@ def _get_recognizer():
     if _recognizer is None:
         _recognizer = sr.Recognizer()
         _recognizer.dynamic_energy_threshold = True
-        # pause_threshold: seconds of silence before phrase is considered done.
-        # Too low = cuts off mid-sentence. Too high = slow response.
         _recognizer.pause_threshold = 1.2
         _recognizer.non_speaking_duration = 0.5
         _recognizer.energy_threshold = 300
     return _recognizer
+
+
+def _find_input_device():
+    """Find the first device with input channels (i.e. a real microphone).
+
+    The default device on Pi often has 0 input channels (HDMI output),
+    so we must scan explicitly. Caches result after first call.
+    """
+    global _mic_index, _mic_index_found
+    if _mic_index_found:
+        return _mic_index
+
+    with _suppress_stderr():
+        try:
+            import pyaudio
+            pa = pyaudio.PyAudio()
+            for i in range(pa.get_device_count()):
+                try:
+                    info = pa.get_device_info_by_index(i)
+                    if info.get("maxInputChannels", 0) > 0:
+                        _mic_index = i
+                        _mic_index_found = True
+                        pa.terminate()
+                        return _mic_index
+                except Exception:
+                    continue
+            pa.terminate()
+        except Exception:
+            pass
+
+    _mic_index_found = True
+    _mic_index = None
+    return _mic_index
 
 
 def listen(phrase_time_limit=None):
@@ -55,10 +87,10 @@ def listen(phrase_time_limit=None):
     """
     global _calibrated
     recognizer = _get_recognizer()
+    mic_index = _find_input_device()
 
     try:
-        # Always suppress stderr — JACK errors come from Microphone() init
-        with _suppress_stderr(), sr.Microphone() as source:
+        with _suppress_stderr(), sr.Microphone(device_index=mic_index) as source:
             if not _calibrated:
                 recognizer.adjust_for_ambient_noise(source, duration=1.0)
                 _calibrated = True
