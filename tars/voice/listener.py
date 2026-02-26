@@ -15,6 +15,7 @@ _recognizer = None
 _calibrated = False
 _mic_index = None
 _mic_index_found = False
+_mic_works = False  # True if a working mic was found
 
 
 @contextlib.contextmanager
@@ -47,38 +48,81 @@ def _get_recognizer():
 
 
 def _find_input_device():
-    """Find the USB microphone using SpeechRecognition's device list.
+    """Find a working input microphone by actually opening each device.
 
-    SpeechRecognition has its own device indexing that may differ from
-    PyAudio's. We must use SR's list to avoid index mismatch errors.
-    Caches result after first call.
+    The ONLY reliable way to check if a device index works in
+    SpeechRecognition is to enter the `with sr.Microphone(...)` context
+    manager. The constructor alone doesn't validate the index.
+
+    Strategy:
+        1. Try each device by actually opening it (with block)
+        2. Prefer USB/mic-named devices over others
+        3. Fall back to any device that opens successfully
+        4. Cache result after first successful find
+
+    Returns:
+        Device index (int) or None if nothing works.
     """
-    global _mic_index, _mic_index_found
+    global _mic_index, _mic_index_found, _mic_works
     if _mic_index_found:
         return _mic_index
 
     with _suppress_stderr():
         try:
             names = sr.Microphone.list_microphone_names()
-            for i, name in enumerate(names):
-                name_lower = name.lower()
-                # Look for USB mic or any device with "input"/"capture"
-                if any(kw in name_lower for kw in ("usb", "mic", "input", "capture")):
-                    # Verify this index actually works by trying to open it
-                    try:
-                        sr.Microphone(device_index=i)
-                        _mic_index = i
-                        _mic_index_found = True
-                        return _mic_index
-                    except Exception:
-                        continue
         except Exception:
-            pass
+            names = []
 
-    # Fallback: try index 0
+        # Pass 1: Try USB/mic-named devices first (most likely the right one)
+        usb_keywords = ("usb", "mic", "input", "capture")
+        for i, name in enumerate(names):
+            if any(kw in name.lower() for kw in usb_keywords):
+                if _try_open_mic(i):
+                    _mic_index = i
+                    _mic_index_found = True
+                    _mic_works = True
+                    print(f"Microphone found: [{i}] {name}")
+                    return _mic_index
+
+        # Pass 2: Try every device — first one that opens wins
+        for i, name in enumerate(names):
+            if _try_open_mic(i):
+                _mic_index = i
+                _mic_index_found = True
+                _mic_works = True
+                print(f"Microphone found: [{i}] {name}")
+                return _mic_index
+
+        # Pass 3: Try None (system default) as last resort
+        if _try_open_mic(None):
+            _mic_index = None
+            _mic_index_found = True
+            _mic_works = True
+            print("Microphone found: system default")
+            return _mic_index
+
+    # Nothing works
     _mic_index_found = True
-    _mic_index = 0
+    _mic_works = False
+    _mic_index = None
+    print("WARNING: No working microphone found!")
     return _mic_index
+
+
+def _try_open_mic(index):
+    """Try to actually open a microphone at the given index.
+
+    Returns True if the device opens successfully (has input channels).
+    This enters the `with` block which is the only reliable validation.
+    """
+    try:
+        with _suppress_stderr():
+            with sr.Microphone(device_index=index) as source:
+                # If we get here, the device opened successfully
+                # Do a very brief read to confirm it actually captures audio
+                return source.stream is not None
+    except Exception:
+        return False
 
 
 def listen(phrase_time_limit=None):
@@ -91,8 +135,13 @@ def listen(phrase_time_limit=None):
     recognizer = _get_recognizer()
     mic_index = _find_input_device()
 
+    if not _mic_works:
+        # No working mic was found during detection
+        return None
+
     try:
-        with _suppress_stderr(), sr.Microphone(device_index=mic_index) as source:
+        mic_kwargs = {"device_index": mic_index} if mic_index is not None else {}
+        with _suppress_stderr(), sr.Microphone(**mic_kwargs) as source:
             if not _calibrated:
                 recognizer.adjust_for_ambient_noise(source, duration=1.0)
                 _calibrated = True

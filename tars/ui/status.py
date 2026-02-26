@@ -66,18 +66,30 @@ def check_controller():
 
 
 def check_microphone():
-    """Check if a microphone is available."""
+    """Check if a microphone is available by actually opening one."""
     try:
         import speech_recognition as sr
 
-        # Just try to create a default Microphone — simplest reliable check
-        mic = sr.Microphone()
         names = sr.Microphone.list_microphone_names()
-        if mic.device_index is not None and mic.device_index < len(names):
-            return True, f"Available ({names[mic.device_index]})"
-        return True, "Available"
-    except (ImportError, OSError, IndexError):
+        # Try each device — same strategy as listener.py
+        usb_keywords = ("usb", "mic", "input", "capture")
+        for i, name in enumerate(names):
+            if any(kw in name.lower() for kw in usb_keywords):
+                try:
+                    with sr.Microphone(device_index=i):
+                        return True, f"Available ({name})"
+                except Exception:
+                    continue
+        # Try any device
+        for i, name in enumerate(names):
+            try:
+                with sr.Microphone(device_index=i):
+                    return True, f"Available ({name})"
+            except Exception:
+                continue
         return False, "No microphone detected"
+    except ImportError:
+        return False, "speech_recognition not installed"
     except Exception:
         return False, "No microphone detected"
 
