@@ -1,7 +1,7 @@
 """Speech recognition for TARS — listens for voice commands.
 
 Uses SpeechRecognition with Google Speech API.
-Finds the USB mic by scanning PyAudio for input-capable devices.
+Finds the USB mic using SpeechRecognition's own device list.
 """
 
 import contextlib
@@ -47,10 +47,11 @@ def _get_recognizer():
 
 
 def _find_input_device():
-    """Find the first device with input channels (i.e. a real microphone).
+    """Find the USB microphone using SpeechRecognition's device list.
 
-    The default device on Pi often has 0 input channels (HDMI output),
-    so we must scan explicitly. Caches result after first call.
+    SpeechRecognition has its own device indexing that may differ from
+    PyAudio's. We must use SR's list to avoid index mismatch errors.
+    Caches result after first call.
     """
     global _mic_index, _mic_index_found
     if _mic_index_found:
@@ -58,24 +59,25 @@ def _find_input_device():
 
     with _suppress_stderr():
         try:
-            import pyaudio
-            pa = pyaudio.PyAudio()
-            for i in range(pa.get_device_count()):
-                try:
-                    info = pa.get_device_info_by_index(i)
-                    if info.get("maxInputChannels", 0) > 0:
+            names = sr.Microphone.list_microphone_names()
+            for i, name in enumerate(names):
+                name_lower = name.lower()
+                # Look for USB mic or any device with "input"/"capture"
+                if any(kw in name_lower for kw in ("usb", "mic", "input", "capture")):
+                    # Verify this index actually works by trying to open it
+                    try:
+                        sr.Microphone(device_index=i)
                         _mic_index = i
                         _mic_index_found = True
-                        pa.terminate()
                         return _mic_index
-                except Exception:
-                    continue
-            pa.terminate()
+                    except Exception:
+                        continue
         except Exception:
             pass
 
+    # Fallback: try index 0
     _mic_index_found = True
-    _mic_index = None
+    _mic_index = 0
     return _mic_index
 
 
