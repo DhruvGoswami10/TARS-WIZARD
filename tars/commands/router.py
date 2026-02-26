@@ -7,6 +7,19 @@ from tars.ui import terminal
 from tars.voice import speaker
 
 
+def _is_vision_command(cmd):
+    """Check if the command is asking TARS to use the camera."""
+    vision_phrases = (
+        "what do you see", "what can you see", "look around", "describe",
+        "what am i holding", "what is this", "what's this", "what is that",
+        "what's that", "can you see", "do you see", "take a look",
+        "look at this", "look at that", "what's in front",
+        "what am i wearing", "read this", "read that",
+        "show me", "identify", "recognize",
+    )
+    return any(phrase in cmd for phrase in vision_phrases)
+
+
 def _respond(text, lang, text_only=False):
     """Print response to terminal and speak it (unless text-only mode).
 
@@ -107,7 +120,7 @@ def process_command(command, state):
         _respond(response, state.current_language, state.text_only)
 
     # Camera / vision commands
-    elif any(phrase in cmd for phrase in ("what do you see", "look around", "describe")):
+    elif _is_vision_command(cmd):
         if not camera.is_available():
             _respond("My eyes are offline. No camera detected.", state.current_language, state.text_only)
         else:
