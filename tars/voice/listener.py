@@ -166,7 +166,7 @@ def listen(phrase_time_limit=None):
     mic = _StableMic(_pa, _device_index, _sample_rate)
 
     try:
-        with _suppress_stderr(), mic:
+        with mic:
             if not _calibrated:
                 recognizer.adjust_for_ambient_noise(mic, duration=1.0)
                 _calibrated = True
