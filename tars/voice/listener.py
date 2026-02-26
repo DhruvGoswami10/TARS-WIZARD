@@ -3,10 +3,12 @@
 Uses SpeechRecognition with Google Speech API.
 Opens the USB mic ONCE and keeps it alive to avoid PyAudio
 device index instability between reinitializations.
+Auto-recovers if the stream goes stale.
 """
 
 import contextlib
 import os
+import time
 
 import speech_recognition as sr
 
@@ -15,12 +17,15 @@ from tars import config
 _recognizer = None
 _calibrated = False
 
-# Persistent mic — opened once, never closed between listen() calls.
-# This avoids PyAudio device count changing on every reinitialization.
+# Persistent mic — opened once, reused across listen() calls.
 _mic = None
 _mic_source = None
 _mic_ready = False
 _mic_attempted = False
+
+# Track consecutive timeouts to detect stale streams
+_consecutive_timeouts = 0
+_MAX_TIMEOUTS_BEFORE_RESET = 30  # ~90 seconds of silence before reset
 
 
 @contextlib.contextmanager
@@ -53,11 +58,11 @@ def _get_recognizer():
 
 
 def _open_mic():
-    """Find and open the microphone ONCE. Keeps it alive for all listen() calls.
+    """Find and open the microphone. Keeps it alive for all listen() calls.
 
-    The key insight: PyAudio's device count is unstable — it can change
-    between reinitializations. So we open the mic once and never close it.
-    This way the device index is validated exactly once at open time.
+    PyAudio's device count is unstable — it can change between
+    reinitializations. So we open the mic once and reuse the stream.
+    If the stream goes stale, _reset_mic() allows reopening.
     """
     global _mic, _mic_source, _mic_ready, _mic_attempted
 
@@ -114,10 +119,13 @@ def listen(phrase_time_limit=None):
     Returns:
         Lowercase string of recognized speech, or None on failure.
     """
-    global _calibrated
+    global _calibrated, _consecutive_timeouts
 
-    # Open mic on first call (stays open forever)
+    # Open mic on first call (stays open until reset)
     if not _open_mic():
+        # Wait a bit before retrying to avoid busy loop
+        time.sleep(2)
+        _reset_mic()
         return None
 
     recognizer = _get_recognizer()
@@ -133,18 +141,26 @@ def listen(phrase_time_limit=None):
                 timeout=config.LISTEN_TIMEOUT,
                 phrase_time_limit=phrase_time_limit or 10,
             )
+            _consecutive_timeouts = 0  # Got audio — stream is alive
             command = recognizer.recognize_google(audio)
             return command.lower()
     except sr.UnknownValueError:
+        _consecutive_timeouts = 0  # Got audio, just couldn't understand
         return None
     except sr.WaitTimeoutError:
+        _consecutive_timeouts += 1
+        if _consecutive_timeouts >= _MAX_TIMEOUTS_BEFORE_RESET:
+            # Stream may be stale — reopen mic
+            print("Mic stream may be stale, reopening...")
+            _reset_mic()
+            _consecutive_timeouts = 0
         return None
     except sr.RequestError:
         print("Speech service unavailable.")
         return None
-    except OSError as e:
+    except Exception as e:
         print(f"Microphone error: {e}")
-        # Mic may have disconnected — allow retry on next call
+        # Mic disconnected or stream died — reopen on next call
         _reset_mic()
         return None
 
