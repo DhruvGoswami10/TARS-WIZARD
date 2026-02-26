@@ -47,6 +47,7 @@ from tars.commands.language import LanguageState  # noqa: E402
 from tars.commands.movement import neutral  # noqa: E402
 from tars.commands.router import process_command  # noqa: E402
 from tars.hardware import camera, servos  # noqa: E402
+from tars.remote import openclaw_client  # noqa: E402
 from tars.ui import terminal  # noqa: E402
 from tars.utils.logging import setup as setup_logging  # noqa: E402
 from tars.utils.threading import SharedState, is_shutting_down, request_shutdown, shutdown_event  # noqa: E402
@@ -266,6 +267,7 @@ def main():
     speaker.initialize()
     chat.initialize()
     camera.initialize()
+    openclaw_client.initialize()
 
     # Show system status
     terminal.print_status_panel()

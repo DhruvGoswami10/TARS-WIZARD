@@ -3,8 +3,22 @@ import time
 from tars.ai import chat
 from tars.commands import info, language, movement, settings
 from tars.hardware import camera
+from tars.remote import openclaw_client
 from tars.ui import terminal
 from tars.voice import speaker
+
+
+def _is_web_task(cmd):
+    """Check if the command is a web task for OpenClaw."""
+    web_phrases = (
+        "search for", "find me", "find flights", "find hotels",
+        "look up", "book a", "book me", "check flights",
+        "check hotels", "browse", "go to", "open website",
+        "search the web", "google", "look online",
+        "compare prices", "find restaurants", "find tickets",
+        "order", "buy", "purchase", "shop for",
+    )
+    return any(phrase in cmd for phrase in web_phrases)
 
 
 def _is_vision_command(cmd):
@@ -166,6 +180,27 @@ def process_command(command, state):
                     target_language=state.current_language,
                 )
             _respond(response, state.current_language, state.text_only)
+
+    # OpenClaw / web tasks
+    elif _is_web_task(cmd):
+        if not openclaw_client.is_available():
+            _respond("My remote agent isn't connected. Set up OpenClaw in .env.",
+                     state.current_language, state.text_only)
+        else:
+            _respond("Let me look that up, give me a moment...",
+                     state.current_language, state.text_only)
+            result = openclaw_client.send_task(command)
+            # Summarize long responses with AI
+            if len(result) > 300:
+                summary = chat.get_response(
+                    f"Summarize this concisely for speaking aloud: {result}",
+                    honesty=state.honesty,
+                    humor=state.humor,
+                    target_language=state.current_language,
+                )
+                _respond(summary or result, state.current_language, state.text_only)
+            else:
+                _respond(result, state.current_language, state.text_only)
 
     # Default — chat with AI
     else:
