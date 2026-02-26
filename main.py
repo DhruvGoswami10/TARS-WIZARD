@@ -117,17 +117,20 @@ def voice_pipeline_thread(state, voice_sm, use_wake_word=False):
                 terminal.print_system("Wake word detected!")
                 wake_prompt_shown = False  # Show again after next command
 
+            # Wait for TARS to finish speaking before listening.
+            # Otherwise the mic picks up TARS's own voice and wastes a cycle.
+            while speaker.is_speaking() and not is_shutting_down():
+                time.sleep(0.05)
+
+            if is_shutting_down():
+                continue
+
             # LISTENING: Record user speech
             voice_sm.transition(VoiceState.LISTENING)
             command = listener.listen()
 
             if not command or is_shutting_down():
                 continue
-
-            # Stop any ongoing speech — user is interrupting
-            if speaker.is_speaking():
-                speaker.stop_speaking()
-                terminal.print_system("[Interrupted]")
 
             terminal.print_user(command)
 
