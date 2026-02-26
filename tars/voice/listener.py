@@ -1,15 +1,15 @@
 """Speech recognition for TARS — listens for voice commands.
 
 Uses SpeechRecognition with Google Speech API.
-Opens the USB mic ONCE and keeps it alive to avoid PyAudio
-device index instability between reinitializations.
-Auto-recovers if the stream goes stale.
+Bypasses sr.Microphone entirely — uses PyAudio directly with a SINGLE
+persistent instance so device indices never change between calls.
+A fresh stream is opened/closed per listen() call to avoid stale buffers.
 """
 
 import contextlib
 import os
-import time
 
+import pyaudio
 import speech_recognition as sr
 
 from tars import config
@@ -17,15 +17,12 @@ from tars import config
 _recognizer = None
 _calibrated = False
 
-# Persistent mic — opened once, reused across listen() calls.
-_mic = None
-_mic_source = None
-_mic_ready = False
-_mic_attempted = False
-
-# Track consecutive timeouts to detect stale streams
-_consecutive_timeouts = 0
-_MAX_TIMEOUTS_BEFORE_RESET = 30  # ~90 seconds of silence before reset
+# Single PyAudio instance — never terminated, keeps device indices stable.
+_pa = None
+_device_index = None
+_device_name = None
+_sample_rate = 16000
+_init_done = False
 
 
 @contextlib.contextmanager
@@ -45,6 +42,45 @@ def _suppress_stderr():
         yield
 
 
+class _StableMic:
+    """Microphone source compatible with sr.Recognizer.listen().
+
+    Uses a shared PyAudio instance so device indices stay stable.
+    Opens a fresh stream each time (via context manager) to avoid
+    stale buffers that cause the mic to stop hearing.
+    """
+
+    CHUNK = 1024
+    SAMPLE_WIDTH = 2  # 16-bit audio
+
+    def __init__(self, pa_instance, device_index, sample_rate):
+        self.pa = pa_instance
+        self.device_index = device_index
+        self.SAMPLE_RATE = sample_rate
+        self.format = pyaudio.paInt16
+        self.stream = None
+
+    def __enter__(self):
+        self.stream = self.pa.open(
+            input=True,
+            input_device_index=self.device_index,
+            format=self.format,
+            rate=self.SAMPLE_RATE,
+            channels=1,
+            frames_per_buffer=self.CHUNK,
+        )
+        return self
+
+    def __exit__(self, *args):
+        if self.stream:
+            try:
+                self.stream.stop_stream()
+                self.stream.close()
+            except Exception:
+                pass
+            self.stream = None
+
+
 def _get_recognizer():
     """Get or create the shared recognizer instance."""
     global _recognizer
@@ -57,124 +93,98 @@ def _get_recognizer():
     return _recognizer
 
 
-def _open_mic():
-    """Find and open the microphone. Keeps it alive for all listen() calls.
+def _init_audio():
+    """Initialize PyAudio ONCE and find the USB microphone.
 
-    PyAudio's device count is unstable — it can change between
-    reinitializations. So we open the mic once and reuse the stream.
-    If the stream goes stale, _reset_mic() allows reopening.
+    Creates a single PyAudio instance that lives for the entire process.
+    This keeps device indices stable — no more "Device index out of range".
     """
-    global _mic, _mic_source, _mic_ready, _mic_attempted
+    global _pa, _device_index, _device_name, _sample_rate, _init_done
 
-    if _mic_attempted:
-        return _mic_ready
+    if _init_done:
+        return _device_index is not None
 
-    _mic_attempted = True
+    _init_done = True
 
     with _suppress_stderr():
         try:
-            names = sr.Microphone.list_microphone_names()
-        except Exception:
-            names = []
+            _pa = pyaudio.PyAudio()
+        except Exception as e:
+            print(f"PyAudio init failed: {e}")
+            return False
 
-        # Build candidate list: USB/mic-named devices first, then all others
+        count = _pa.get_device_count()
+
+        # Pass 1: Find USB/mic-named device with input channels
         usb_keywords = ("usb", "mic", "input", "capture")
-        candidates = []
-        others = []
-        for i, name in enumerate(names):
-            if any(kw in name.lower() for kw in usb_keywords):
-                candidates.append((i, name))
-            else:
-                others.append((i, name))
-        candidates.extend(others)
-        candidates.append((None, "system default"))
-
-        for idx, name in candidates:
+        for i in range(count):
             try:
-                if idx is not None:
-                    mic = sr.Microphone(device_index=idx)
-                else:
-                    mic = sr.Microphone()
-
-                # Actually open the mic (enters the context manager)
-                # This is where "Device index out of range" would throw
-                source = mic.__enter__()
-
-                # Success — keep it alive
-                _mic = mic
-                _mic_source = source
-                _mic_ready = True
-                print(f"Microphone opened: [{idx}] {name}")
-                return True
+                info = _pa.get_device_info_by_index(i)
+                if info.get("maxInputChannels", 0) > 0:
+                    name = info.get("name", "").lower()
+                    if any(kw in name for kw in usb_keywords):
+                        _device_index = i
+                        _device_name = info.get("name", f"Device {i}")
+                        _sample_rate = int(info.get("defaultSampleRate", 16000))
+                        print(f"Microphone found: [{i}] {_device_name}")
+                        return True
             except Exception:
                 continue
 
-    print("WARNING: No working microphone found!")
+        # Pass 2: Any device with input channels
+        for i in range(count):
+            try:
+                info = _pa.get_device_info_by_index(i)
+                if info.get("maxInputChannels", 0) > 0:
+                    _device_index = i
+                    _device_name = info.get("name", f"Device {i}")
+                    _sample_rate = int(info.get("defaultSampleRate", 16000))
+                    print(f"Microphone found: [{i}] {_device_name}")
+                    return True
+            except Exception:
+                continue
+
+    print("WARNING: No microphone with input channels found!")
     return False
 
 
 def listen(phrase_time_limit=None):
     """Listen for a voice command via microphone.
 
+    Opens a fresh audio stream for each call (avoids stale buffers)
+    but reuses the same PyAudio instance (stable device indices).
+
     Returns:
         Lowercase string of recognized speech, or None on failure.
     """
-    global _calibrated, _consecutive_timeouts
+    global _calibrated
 
-    # Open mic on first call (stays open until reset)
-    if not _open_mic():
-        # Wait a bit before retrying to avoid busy loop
-        time.sleep(2)
-        _reset_mic()
+    if not _init_audio():
         return None
 
     recognizer = _get_recognizer()
+    mic = _StableMic(_pa, _device_index, _sample_rate)
 
     try:
-        with _suppress_stderr():
+        with _suppress_stderr(), mic:
             if not _calibrated:
-                recognizer.adjust_for_ambient_noise(_mic_source, duration=1.0)
+                recognizer.adjust_for_ambient_noise(mic, duration=1.0)
                 _calibrated = True
 
             audio = recognizer.listen(
-                _mic_source,
+                mic,
                 timeout=config.LISTEN_TIMEOUT,
                 phrase_time_limit=phrase_time_limit or 10,
             )
-            _consecutive_timeouts = 0  # Got audio — stream is alive
             command = recognizer.recognize_google(audio)
             return command.lower()
     except sr.UnknownValueError:
-        _consecutive_timeouts = 0  # Got audio, just couldn't understand
         return None
     except sr.WaitTimeoutError:
-        _consecutive_timeouts += 1
-        if _consecutive_timeouts >= _MAX_TIMEOUTS_BEFORE_RESET:
-            # Stream may be stale — reopen mic
-            print("Mic stream may be stale, reopening...")
-            _reset_mic()
-            _consecutive_timeouts = 0
         return None
     except sr.RequestError:
         print("Speech service unavailable.")
         return None
     except Exception as e:
         print(f"Microphone error: {e}")
-        # Mic disconnected or stream died — reopen on next call
-        _reset_mic()
         return None
-
-
-def _reset_mic():
-    """Reset mic state so next listen() will try to reopen."""
-    global _mic, _mic_source, _mic_ready, _mic_attempted, _calibrated
-    if _mic is not None:
-        try:
-            _mic.__exit__(None, None, None)
-        except Exception:
-            pass
-    _mic = None
-    _mic_source = None
-    _mic_ready = False
-    _mic_attempted = False
-    _calibrated = False
