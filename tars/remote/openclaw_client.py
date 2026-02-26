@@ -1,132 +1,80 @@
-"""OpenClaw integration via Telegram Bot API.
+"""OpenClaw integration — connects to a relay server on your laptop.
 
-Sends tasks to OpenClaw (running on laptop) through its Telegram bot.
-Polls for the response and returns it to TARS.
+Architecture:
+    Pi (TARS) → HTTP → Laptop (relay server) → Telegram → OpenClaw
+    Pi (TARS) ← HTTP ← Laptop (relay server) ← Telegram ← OpenClaw
 
-Flow:
-    1. TARS sends a message to the Telegram bot
-    2. OpenClaw receives it, executes browser task
-    3. OpenClaw replies in Telegram
-    4. TARS polls for the reply and speaks it
+The relay server (server/openclaw_relay.py) runs on your laptop alongside
+OpenClaw. It forwards tasks to OpenClaw via Telegram and captures replies.
+TARS just makes simple HTTP calls — no Telegram API conflicts.
 """
 
-import time
+import json
 import urllib.error
 import urllib.parse
 import urllib.request
-import json
 
 from tars import config
 
-_bot_token = None
-_chat_id = None
+_server_url = None
 _available = False
 
 
 def initialize():
-    """Initialize the OpenClaw Telegram client."""
-    global _bot_token, _chat_id, _available
+    """Initialize the OpenClaw client."""
+    global _server_url, _available
 
-    _bot_token = config.env("TELEGRAM_BOT_TOKEN", "")
-    _chat_id = config.env("TELEGRAM_CHAT_ID", "")
+    _server_url = config.env("OPENCLAW_SERVER_URL", "")
 
-    if _bot_token and _chat_id:
-        _available = True
-        print("OpenClaw client initialized (Telegram)")
+    if _server_url:
+        # Check if server is reachable
+        try:
+            req = urllib.request.Request(f"{_server_url}/health")
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                if data.get("status") == "ok":
+                    _available = True
+                    print(f"OpenClaw relay connected ({_server_url})")
+                    return
+        except Exception:
+            pass
+        print(f"OpenClaw relay not reachable ({_server_url})")
     else:
-        print("OpenClaw not configured (set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env)")
+        print("OpenClaw not configured (set OPENCLAW_SERVER_URL in .env)")
 
 
 def is_available():
-    """Check if OpenClaw is configured."""
+    """Check if OpenClaw relay server is reachable."""
     return _available
 
 
-def _telegram_api(method, params=None):
-    """Call the Telegram Bot API."""
-    url = f"https://api.telegram.org/bot{_bot_token}/{method}"
-    if params:
-        data = urllib.parse.urlencode(params).encode("utf-8")
-    else:
-        data = None
+def send_task(task_text, timeout=120):
+    """Send a task to OpenClaw via the relay server and get the response.
 
-    try:
-        req = urllib.request.Request(url, data=data)
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except Exception as e:
-        print(f"Telegram API error: {e}")
-        return None
-
-
-def _get_latest_message_id():
-    """Get the ID of the latest message in the chat (to know where to start polling)."""
-    result = _telegram_api("getUpdates", {"chat_id": _chat_id, "offset": -1})
-    if result and result.get("ok") and result.get("result"):
-        return result["result"][-1].get("update_id", 0)
-    return 0
-
-
-def send_task(task_text, timeout=90):
-    """Send a task to OpenClaw and wait for its response.
+    The relay server handles all Telegram communication.
+    TARS just sends a simple HTTP POST and gets the result back.
 
     Args:
         task_text: The task to send (e.g., "find flights to Dubai")
-        timeout: Max seconds to wait for a response (default 90)
+        timeout: Max seconds to wait for response
 
     Returns:
         OpenClaw's response text, or an error message.
     """
     if not _available:
-        return "OpenClaw is not configured. Add TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to .env."
+        return "OpenClaw relay is not running. Start server/openclaw_relay.py on your laptop."
 
-    # Get current latest update ID so we only look at NEW messages
-    last_update_id = _get_latest_message_id()
-
-    # Send the task message to the bot
-    send_result = _telegram_api("sendMessage", {
-        "chat_id": _chat_id,
-        "text": task_text,
-    })
-
-    if not send_result or not send_result.get("ok"):
-        return "Failed to send task to OpenClaw."
-
-    sent_message_id = send_result.get("result", {}).get("message_id", 0)
-
-    # Poll for OpenClaw's response
-    start_time = time.time()
-    poll_interval = 2  # seconds between polls
-
-    while time.time() - start_time < timeout:
-        time.sleep(poll_interval)
-
-        updates = _telegram_api("getUpdates", {
-            "offset": last_update_id + 1,
-            "timeout": 5,
-        })
-
-        if not updates or not updates.get("ok"):
-            continue
-
-        for update in updates.get("result", []):
-            update_id = update.get("update_id", 0)
-            message = update.get("message", {})
-            msg_chat_id = str(message.get("chat", {}).get("id", ""))
-            msg_id = message.get("message_id", 0)
-            text = message.get("text", "")
-
-            # Skip our own sent message
-            if msg_id == sent_message_id:
-                last_update_id = max(last_update_id, update_id)
-                continue
-
-            # Look for a reply from the bot in our chat
-            if msg_chat_id == str(_chat_id) and text and msg_id > sent_message_id:
-                # Mark this update as processed
-                _telegram_api("getUpdates", {"offset": update_id + 1})
-                return text
-
-            last_update_id = max(last_update_id, update_id)
-
-    return "OpenClaw didn't respond in time. It might still be working — check Telegram."
+    try:
+        data = json.dumps({"task": task_text}).encode("utf-8")
+        req = urllib.request.Request(
+            f"{_server_url}/task",
+            data=data,
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+            return result.get("response", "No response from OpenClaw.")
+    except urllib.error.URLError as e:
+        return f"Can't reach OpenClaw relay: {e}"
+    except Exception as e:
+        return f"OpenClaw error: {e}"

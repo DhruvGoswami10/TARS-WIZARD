@@ -144,12 +144,12 @@ def check_camera():
 
 
 def check_openclaw():
-    """Check if OpenClaw is configured."""
+    """Check if OpenClaw relay is connected."""
     try:
         from tars.remote import openclaw_client
         if openclaw_client.is_available():
-            return True, "Connected (Telegram)"
-        return False, "Not configured (set TELEGRAM_BOT_TOKEN in .env)"
+            return True, "Relay connected"
+        return False, "Not configured (set OPENCLAW_SERVER_URL in .env)"
     except Exception:
         return False, "Not configured"
 
