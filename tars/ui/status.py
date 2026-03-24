@@ -143,17 +143,6 @@ def check_camera():
         return False, "Not detected (Pi only)"
 
 
-def check_openclaw():
-    """Check if OpenClaw relay is connected."""
-    try:
-        from tars.remote import openclaw_client
-        if openclaw_client.is_available():
-            return True, "Relay connected"
-        return False, "Not configured (set OPENCLAW_SERVER_URL in .env)"
-    except Exception:
-        return False, "Not configured"
-
-
 def get_all_status():
     """Run all checks and return results."""
     return {
@@ -167,5 +156,4 @@ def get_all_status():
         "Servo Controller": check_servos(),
         "I2C Devices": check_i2c(),
         "Game Controller": check_controller(),
-        "OpenClaw": check_openclaw(),
     }
