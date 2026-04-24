@@ -37,7 +37,7 @@ movement:
 # ─── Voice Settings ─────────────────────────────────────────
 voice:
   # Speech-to-text
-  listen_timeout: 3          # seconds to wait for speech
+  listen_timeout: 3          # seconds to wait for speech to start
   # Text-to-speech (edge-tts — free, no API key needed)
   # Rate uses percent format: "+0%" is normal, "-15%" is slower
   # Pitch uses Hz format: "+0Hz" is normal, "-10Hz" is lower
