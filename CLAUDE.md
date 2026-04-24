@@ -18,23 +18,21 @@ This file tracks project status, architecture decisions, and key information for
 
 ```
 TARS-WIZARD/
-├── main.py                  # Single entry point (Phase 2)
-├── config.yaml              # All settings
-├── .env.example             # API key template
-├── requirements.txt         # Python dependencies
-├── deploy.sh                # Deploy to Pi
-├── setup.sh                 # Fresh Pi setup
-├── tars/                    # Core package (Phase 1+)
-├── software/                # Original code (legacy, being migrated)
-│   ├── TARSmaster.py        # Desktop mode with Tkinter GUI
-│   └── bundle/              # Headless mode modules
+├── software/                # New code goes here
+│   └── legacy/              # All v1 code preserved
+│       ├── main.py
+│       ├── config.yaml
+│       ├── requirements.txt
+│       ├── tars/            # Modular package
+│       ├── tests/
+│       └── ...
 ├── hardware/                # 3D printing files and wiring
 │   ├── STL/                 # 3D printable parts
 │   ├── parts-list.md        # Bill of materials
 │   └── wiring-guide.pdf     # Electrical connections
 ├── docs/                    # Documentation
-├── tests/                   # Test suite (Phase 6)
-└── .github/                 # CI, issue/PR templates
+├── media/                   # GIFs and images
+└── .github/                 # CI (disabled until new code)
 ```
 
 ## Architecture Decisions

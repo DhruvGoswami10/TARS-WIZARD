@@ -1,38 +1,12 @@
 name: CI
 
+# Disabled — legacy code moved to software/legacy/.
+# Will be re-enabled when new software/ code is added.
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
-  lint-and-test:
+  placeholder:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg portaudio19-dev
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Lint with ruff
-        run: ruff check .
-
-      - name: Run tests
-        run: pytest --tb=short -q
+      - run: echo "CI will be re-enabled with new codebase"
